@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Base de données locale
+*.db
+athena.db
+
+# Env
+.env
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
