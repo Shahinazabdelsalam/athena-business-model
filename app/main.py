@@ -7,8 +7,11 @@ modèles économiques et visualise leur viabilité (coûts fixes, offres,
 marge, seuil de rentabilité, compte de résultat).
 """
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger("athena")
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -30,7 +33,11 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 @app.on_event("startup")
 def _startup():
-    init_db()
+    try:
+        init_db()
+        logger.info("Database initialized successfully.")
+    except Exception as exc:
+        logger.error("Database init failed at startup: %s — app will start without DB.", exc)
 
 
 # --------------------------------------------------------------------------
