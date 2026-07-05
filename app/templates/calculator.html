@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{% if model %}{{ model.nom }}{% else %}Essayer{% endif %} — Athena{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:24px">
+    <div>
+      <h1 id="titre-modele" style="margin:0">{% if model %}{{ model.nom }}{% else %}Mode découverte{% endif %}</h1>
+      <p class="muted" style="margin:4px 0 0">
+        {% if model %}Vos modifications se sauvegardent sur votre compte.
+        {% else %}<a href="/inscription">Créez un compte</a> pour sauvegarder ce modèle.{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px">
+      {% if model %}<button class="btn vert" onclick="sauvegarder()">💾 Sauvegarder</button>{% endif %}
+      <a class="btn ghost small" href="/tableau-de-bord">← Mes modèles</a>
+    </div>
+  </div>
+
+  <div class="calc">
+    <!-- COLONNE SAISIE -->
+    <div class="inputs">
+
+      <div class="section">
+        <h3>⚙️ Paramètres de base</h3>
+        <p class="hint">Votre statut détermine cotisations et fiscalité (feuille BIENVENUE).</p>
+        <div class="check"><input type="checkbox" id="collecte_tva" checked><label for="collecte_tva" style="margin:0">Collecte et reverse la TVA (société)</label></div>
+        <div class="check"><input type="checkbox" id="cotisations_patronales"><label for="cotisations_patronales" style="margin:0">Cotisations patronales sur les rémunérations</label></div>
+        <div class="params-grid">
+          <div><label>Cotisation sur le CA (%)</label><input type="number" id="cotisation_ca_pct" value="0" step="0.5" min="0"></div>
+          <div><label>Taux cotisations patronales (%)</label><input type="number" id="taux_cotisations_patronales" value="42" step="1" min="0"></div>
+          <div><label>Taxe sur les salaires (%)</label><input type="number" id="taux_taxe_salaires" value="3" step="0.5" min="0"></div>
+          <div><label>Heures/an par ETP</label><input type="number" id="heures_par_etp" value="1582" step="1" min="1"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>🏢 Charges externes</h3>
+        <p class="hint">Coûts fixes payés à des tiers : loyer, assurances, honoraires, logiciels…</p>
+        <div id="charges"></div>
+        <button class="add-line" onclick="addCharge()">+ Ajouter une charge</button>
+      </div>
+
+      <div class="section">
+        <h3>👥 Équipe</h3>
+        <p class="hint">Chaque rôle, son nombre d'ETP et sa rémunération nette mensuelle.</p>
+        <div id="equipe"></div>
+        <button class="add-line" onclick="addRole()">+ Ajouter un rôle</button>
+      </div>
+
+      <div class="section">
+        <h3>🧰 Investissements</h3>
+        <p class="hint">Matériel amorti sur plusieurs années (≥ 500 €). Amortissement = montant ÷ durée.</p>
+        <div id="invest"></div>
+        <button class="add-line" onclick="addInvest()">+ Ajouter un investissement</button>
+      </div>
+
+      <div class="section">
+        <h3>💡 Offres & coûts variables</h3>
+        <p class="hint">Vos sources de revenus : prix, coût variable et volume annuel de chaque offre.</p>
+        <div id="offres"></div>
+        <button class="add-line" onclick="addOffre()">+ Ajouter une offre</button>
+      </div>
+    </div>
+
+    <!-- COLONNE RÉSULTATS -->
+    <div class="results">
+      <div id="verdict" class="verdict ok">Viabilité<span class="big" id="verdict-txt">—</span></div>
+
+      <div class="section">
+        <h3>📈 Indicateurs clés</h3>
+        <div class="kpi"><span>Chiffre d'affaires annuel</span><span class="val" id="k-ca">—</span></div>
+        <div class="kpi"><span>Marge brute</span><span class="val" id="k-mb">—</span></div>
+        <div class="kpi"><span>Coûts fixes annuels</span><span class="val" id="k-cf">—</span></div>
+        <div class="kpi"><span>Marge nette (résultat)</span><span class="val" id="k-mn">—</span></div>
+        <div class="kpi"><span>Seuil de rentabilité (CA)</span><span class="val" id="k-seuil">—</span></div>
+        <div class="kpi"><span>Taux de couverture</span><span class="val" id="k-couv">—</span></div>
+      </div>
+
+      <div class="section">
+        <h3>📊 Revenus vs coûts</h3>
+        <div style="position:relative;height:220px"><canvas id="chart"></canvas></div>
+      </div>
+
+      <div class="section">
+        <h3>🧾 Compte de résultat simplifié</h3>
+        <table class="pl-table" id="pl"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Sauvegardé ✓</div>
+<script>
+  window.MODEL_ID = {% if model %}{{ model.id }}{% else %}null{% endif %};
+  window.MODEL_DATA = {{ model_data | tojson | safe if model_data else "{}" }};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script src="/static/js/calculator.js"></script>
+{% endblock %}

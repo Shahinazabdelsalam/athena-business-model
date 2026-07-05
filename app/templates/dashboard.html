@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Mes modèles — Athena{% endblock %}
+{% block content %}
+<div class="container" style="padding-top:32px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 style="margin:0">Bonjour {{ user.nom or "" }} 👋</h1>
+      <p class="muted" style="margin:4px 0 0">Vos modèles économiques</p>
+    </div>
+    <button class="btn" onclick="creerModele()">+ Nouveau modèle</button>
+  </div>
+
+  {% if models %}
+  <div class="grid-models">
+    {% for m in models %}
+    <div class="model-card">
+      <h3>{{ m.nom }}</h3>
+      <p class="muted" style="margin:0">Modifié le {{ m.updated_at.strftime("%d/%m/%Y") }}</p>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <a class="btn small" href="/modele/{{ m.id }}">Ouvrir</a>
+        <button class="btn small danger" onclick="supprimer({{ m.id }})">Supprimer</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card center" style="margin-top:28px">
+    <p>Vous n'avez pas encore de modèle.</p>
+    <button class="btn" onclick="creerModele()">Créer mon premier modèle</button>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+async function creerModele(){
+  const nom = prompt("Nom du modèle ?", "Mon projet");
+  if(!nom) return;
+  const r = await fetch("/api/modeles", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({nom, data:{}})});
+  const j = await r.json();
+  location.href = "/modele/" + j.id;
+}
+async function supprimer(id){
+  if(!confirm("Supprimer ce modèle ?")) return;
+  await fetch("/api/modeles/" + id, {method:"DELETE"});
+  location.reload();
+}
+</script>
+{% endblock %}

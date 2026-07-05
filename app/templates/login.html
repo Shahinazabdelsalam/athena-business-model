@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Connexion — Athena{% endblock %}
+{% block content %}
+<div class="wrap-narrow">
+  <div class="card">
+    <h2>Connexion</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/connexion">
+      <label>Email</label>
+      <input type="email" name="email" required placeholder="vous@exemple.fr">
+      <label>Mot de passe</label>
+      <input type="password" name="password" required>
+      <button class="btn" style="width:100%;margin-top:18px">Se connecter</button>
+    </form>
+    <p class="center muted" style="margin-top:16px">Pas encore de compte ? <a href="/inscription">S'inscrire</a></p>
+  </div>
+</div>
+{% endblock %}

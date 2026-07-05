@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Athena — Modèle économique{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♀</text></svg>">
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/"><span class="logo">♀</span> Athena</a>
+    <div class="links">
+      {% if user %}
+        <a href="/tableau-de-bord">Mes modèles</a>
+        <a href="/deconnexion" class="muted">Déconnexion</a>
+      {% else %}
+        <a href="/essayer">Essayer</a>
+        <a href="/connexion">Connexion</a>
+        <a href="/inscription" class="btn small">S'inscrire</a>
+      {% endif %}
+    </div>
+  </nav>
+  {% block content %}{% endblock %}
+  <footer>
+    Athena Business Model — un outil au service de l'autonomie économique des femmes. ♀
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

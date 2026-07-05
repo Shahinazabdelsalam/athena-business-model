@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Inscription — Athena{% endblock %}
+{% block content %}
+<div class="wrap-narrow">
+  <div class="card">
+    <h2>Créer mon compte</h2>
+    <p class="muted">Gratuit. Vos modèles sont privés et vous appartiennent.</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/inscription">
+      <label>Prénom / nom (facultatif)</label>
+      <input type="text" name="nom" placeholder="Ada">
+      <label>Email</label>
+      <input type="email" name="email" required placeholder="vous@exemple.fr">
+      <label>Mot de passe</label>
+      <input type="password" name="password" required minlength="6" placeholder="6 caractères minimum">
+      <button class="btn" style="width:100%;margin-top:18px">Créer mon compte</button>
+    </form>
+    <p class="center muted" style="margin-top:16px">Déjà un compte ? <a href="/connexion">Se connecter</a></p>
+  </div>
+</div>
+{% endblock %}
