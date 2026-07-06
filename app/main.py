@@ -30,14 +30,14 @@ logger = logging.getLogger("athena")
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="Athena Business Model")
 
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.globals["admin_email"] = ADMIN_EMAIL
-
 # --------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.globals["admin_email"] = ADMIN_EMAIL
 
 GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
