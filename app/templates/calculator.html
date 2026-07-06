@@ -17,12 +17,12 @@
   </div>
 
   <div class="calc">
-    <!-- COLONNE SAISIE -->
     <div class="inputs">
-
       <div class="section">
         <h3>⚙️ Paramètres de base</h3>
-        <p class="hint">Votre statut détermine cotisations et fiscalité (feuille BIENVENUE).</p>
+        <p class="hint">Votre statut détermine cotisations et fiscalité.
+          <button class="btn-wizard" onclick="ouvrirWizard()">✨ Configurer mon profil</button>
+        </p>
         <div class="check"><input type="checkbox" id="collecte_tva" checked><label for="collecte_tva" style="margin:0">Collecte et reverse la TVA (société)</label></div>
         <div class="check"><input type="checkbox" id="cotisations_patronales"><label for="cotisations_patronales" style="margin:0">Cotisations patronales sur les rémunérations</label></div>
         <div class="params-grid">
@@ -32,28 +32,24 @@
           <div><label>Heures/an par ETP</label><input type="number" id="heures_par_etp" value="1582" step="1" min="1"></div>
         </div>
       </div>
-
       <div class="section">
         <h3>🏢 Charges externes</h3>
         <p class="hint">Coûts fixes payés à des tiers : loyer, assurances, honoraires, logiciels…</p>
         <div id="charges"></div>
         <button class="add-line" onclick="addCharge()">+ Ajouter une charge</button>
       </div>
-
       <div class="section">
         <h3>👥 Équipe</h3>
         <p class="hint">Chaque rôle, son nombre d'ETP et sa rémunération nette mensuelle.</p>
         <div id="equipe"></div>
         <button class="add-line" onclick="addRole()">+ Ajouter un rôle</button>
       </div>
-
       <div class="section">
         <h3>🧰 Investissements</h3>
         <p class="hint">Matériel amorti sur plusieurs années (≥ 500 €). Amortissement = montant ÷ durée.</p>
         <div id="invest"></div>
         <button class="add-line" onclick="addInvest()">+ Ajouter un investissement</button>
       </div>
-
       <div class="section">
         <h3>💡 Offres & coûts variables</h3>
         <p class="hint">Vos sources de revenus : prix, coût variable et volume annuel de chaque offre.</p>
@@ -61,11 +57,8 @@
         <button class="add-line" onclick="addOffre()">+ Ajouter une offre</button>
       </div>
     </div>
-
-    <!-- COLONNE RÉSULTATS -->
     <div class="results">
       <div id="verdict" class="verdict ok">Viabilité<span class="big" id="verdict-txt">—</span></div>
-
       <div class="section">
         <h3>📈 Indicateurs clés</h3>
         <div class="kpi"><span>Chiffre d'affaires annuel</span><span class="val" id="k-ca">—</span></div>
@@ -75,12 +68,10 @@
         <div class="kpi"><span>Seuil de rentabilité (CA)</span><span class="val" id="k-seuil">—</span></div>
         <div class="kpi"><span>Taux de couverture</span><span class="val" id="k-couv">—</span></div>
       </div>
-
       <div class="section">
         <h3>📊 Revenus vs coûts</h3>
         <div style="position:relative;height:220px"><canvas id="chart"></canvas></div>
       </div>
-
       <div class="section">
         <h3>🧾 Compte de résultat simplifié</h3>
         <table class="pl-table" id="pl"></table>
@@ -90,6 +81,90 @@
 </div>
 
 <div id="toast" class="toast">Sauvegardé ✓</div>
+
+<div id="wizard-overlay" class="wz-overlay" onclick="wz_closeOnOverlay(event)">
+  <div class="wz-modal">
+    <button class="wz-close" onclick="fermerWizard()">✕</button>
+    <div class="wz-progress">
+      <span class="wz-dot active" id="wz-dot-1"></span>
+      <span class="wz-dot" id="wz-dot-2"></span>
+      <span class="wz-dot" id="wz-dot-3"></span>
+    </div>
+    <div id="wz-step-1" class="wz-step active">
+      <h2 class="wz-title">Quel est ton statut ?</h2>
+      <p class="wz-sub">Cela détermine tes cotisations sur le chiffre d'affaires.</p>
+      <div class="wz-options">
+        <button class="wz-opt" onclick="wz_statut('micro_bnc')"><span class="wz-icon">💼</span><span><strong>Micro — Services BNC / libéral</strong><br><small>Conseil, coaching, design… — 22,2 %</small></span></button>
+        <button class="wz-opt" onclick="wz_statut('micro_bic')"><span class="wz-icon">🛍️</span><span><strong>Micro — Commerce / Artisanat / BIC</strong><br><small>Produits, restauration… — 12,3 %</small></span></button>
+        <button class="wz-opt" onclick="wz_statut('societe')"><span class="wz-icon">🏢</span><span><strong>Société</strong><br><small>SARL, SAS, EURL, SASU…</small></span></button>
+        <button class="wz-opt" onclick="wz_statut('portage')"><span class="wz-icon">🤝</span><span><strong>Portage salarial / CAE</strong><br><small>Frais de gestion ~10 % sur CA</small></span></button>
+      </div>
+    </div>
+    <div id="wz-step-2" class="wz-step">
+      <h2 class="wz-title">Es-tu soumise à la TVA ?</h2>
+      <p class="wz-sub">Franchise de base si CA sous le seuil (36 800 € services).</p>
+      <div class="wz-options wz-options-2">
+        <button class="wz-opt" onclick="wz_tva(false)"><span class="wz-icon">🎁</span><span><strong>Non — Franchise de base</strong><br><small>Je ne facture pas la TVA</small></span></button>
+        <button class="wz-opt" onclick="wz_tva(true)"><span class="wz-icon">📋</span><span><strong>Oui — Je collecte la TVA</strong><br><small>Dépassement ou option volontaire</small></span></button>
+      </div>
+    </div>
+    <div id="wz-step-3" class="wz-step">
+      <h2 class="wz-title">As-tu des salariées ?</h2>
+      <p class="wz-sub">Active les cotisations patronales (~42 %) et la taxe sur les salaires si non-TVA.</p>
+      <div class="wz-options wz-options-2">
+        <button class="wz-opt" onclick="wz_salaries(false)"><span class="wz-icon">🙋‍♀️</span><span><strong>Non — Je travaille seule</strong></span></button>
+        <button class="wz-opt" onclick="wz_salaries(true)"><span class="wz-icon">👥</span><span><strong>Oui — J'ai des salariées</strong></span></button>
+      </div>
+    </div>
+    <div id="wz-step-4" class="wz-step">
+      <div class="wz-check-icon">✅</div>
+      <h2 class="wz-title">Ton profil est configuré !</h2>
+      <div class="wz-summary" id="wz-summary"></div>
+      <button class="btn vert wz-apply" onclick="wz_appliquer()">Appliquer ces paramètres →</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.btn-wizard{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:.82rem;cursor:pointer;font-weight:600;margin-left:8px;vertical-align:middle;transition:opacity .15s;}
+.btn-wizard:hover{opacity:.85;}
+.wz-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;}
+.wz-overlay.open{display:flex;}
+.wz-modal{background:var(--bg,#fff);border-radius:16px;padding:32px 28px 28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.wz-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted,#888);}
+.wz-progress{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
+.wz-dot{width:10px;height:10px;border-radius:50%;background:var(--border,#ddd);transition:background .25s;}
+.wz-dot.active{background:#7c3aed;}
+.wz-title{font-size:1.2rem;font-weight:700;margin:0 0 6px;text-align:center;}
+.wz-sub{font-size:.85rem;color:var(--muted,#666);text-align:center;margin:0 0 20px;}
+.wz-step{display:none;}.wz-step.active{display:block;}
+.wz-options{display:flex;flex-direction:column;gap:10px;}
+.wz-options-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.wz-opt{display:flex;align-items:center;gap:12px;text-align:left;background:var(--bg2,#f9f9fb);border:1.5px solid var(--border,#e0e0e8);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;}
+.wz-opt:hover{border-color:#7c3aed;background:#f5f0ff;}
+.wz-icon{font-size:1.5rem;flex-shrink:0;}
+.wz-opt strong{display:block;font-size:.9rem;}
+.wz-opt small{font-size:.78rem;color:var(--muted,#777);}
+.wz-check-icon{font-size:2.5rem;text-align:center;margin-bottom:8px;}
+.wz-summary{background:var(--bg2,#f9f9fb);border-radius:10px;padding:14px 18px;margin:16px 0 20px;font-size:.88rem;line-height:1.8;}
+.wz-summary b{color:#7c3aed;}
+.wz-apply{width:100%;justify-content:center;font-size:1rem;padding:12px;border-radius:10px;}
+</style>
+
+<script>
+const wz={statut:null,tva:null,salaries:null};
+function ouvrirWizard(){wz.statut=null;wz.tva=null;wz.salaries=null;wz_goto(1);document.getElementById("wizard-overlay").classList.add("open");}
+function fermerWizard(){document.getElementById("wizard-overlay").classList.remove("open");}
+function wz_closeOnOverlay(e){if(e.target===document.getElementById("wizard-overlay"))fermerWizard();}
+function wz_goto(n){[1,2,3,4].forEach(i=>{document.getElementById("wz-step-"+i).classList.toggle("active",i===n);const d=document.getElementById("wz-dot-"+i);if(d)d.classList.toggle("active",i<=n);});}
+function wz_statut(v){wz.statut=v;if(v==='societe'){wz.tva=true;wz_goto(3);}else{wz_goto(2);}}
+function wz_tva(v){wz.tva=v;wz_goto(3);}
+function wz_salaries(v){wz.salaries=v;wz_buildSummary();wz_goto(4);}
+function wz_buildSummary(){const labels={micro_bnc:"Micro BNC/libéral",micro_bic:"Micro Commerce/BIC",societe:"Société (SARL, SAS…)",portage:"Portage salarial / CAE"};const p=wz_params();document.getElementById("wz-summary").innerHTML='<div>📌 Statut : <b>'+labels[wz.statut]+'</b></div><div>🧾 TVA : <b>'+(wz.tva?'Oui':'Non (franchise)')+'</b></div><div>👥 Salariées : <b>'+(wz.salaries?'Oui':'Non')+'</b></div><hr style="border:none;border-top:1px solid #eee;margin:8px 0"><div>↳ Cotisation CA : <b>'+p.cotisation_ca_pct+' %</b></div><div>↳ Cotis. patronales : <b>'+(p.cotisations_patronales?'Activées':'Désactivées')+'</b></div><div>↳ Taxe salaires : <b>'+p.taux_taxe_salaires+' %</b></div>';}
+function wz_params(){return{cotisation_ca_pct:{micro_bnc:22.2,micro_bic:12.3,societe:0,portage:10}[wz.statut]||0,collecte_tva:wz.tva,cotisations_patronales:wz.salaries===true,taux_cotisations_patronales:42,taux_taxe_salaires:(!wz.tva&&wz.salaries)?3:0};}
+function wz_appliquer(){const p=wz_params();document.getElementById("cotisation_ca_pct").value=p.cotisation_ca_pct;document.getElementById("collecte_tva").checked=p.collecte_tva;document.getElementById("cotisations_patronales").checked=p.cotisations_patronales;document.getElementById("taux_cotisations_patronales").value=p.taux_cotisations_patronales;document.getElementById("taux_taxe_salaires").value=p.taux_taxe_salaires;fermerWizard();schedule();const t=document.getElementById("toast");t.textContent="Profil appliqué ✓";t.classList.add("show");setTimeout(()=>{t.classList.remove("show");t.textContent="Sauvegardé ✓";},2000);}
+</script>
+
 <script>
   window.MODEL_ID = {% if model %}{{ model.id }}{% else %}null{% endif %};
   window.MODEL_DATA = {{ model_data | tojson | safe if model_data else "{}" }};
