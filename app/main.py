@@ -250,6 +250,8 @@ async def google_callback(
             "grant_type":    "authorization_code",
         })
         if token_r.status_code != 200:
+            logger.error("Google token exchange failed %s: %s | redirect_uri=%s",
+                         token_r.status_code, token_r.text, redirect_uri)
             return RedirectResponse("/connexion?error=google_token_invalid", status_code=303)
 
         access_token = token_r.json().get("access_token", "")
