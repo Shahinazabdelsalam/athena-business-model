@@ -40,6 +40,7 @@ class Parametres:
     taux_taxe_salaires: float = 0.03           # taxe sur les salaires
     heures_par_etp: float = 1582               # heures/an par équivalent temps plein
     type_montants: str = "HT"                  # "HT" ou "TTC"
+    dividendes_cibles: float = 0.0             # prélèvements / dividendes annuels visés
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Parametres":
@@ -59,6 +60,7 @@ class Parametres:
             taux_taxe_salaires=num("taux_taxe_salaires", 0.03),
             heures_par_etp=num("heures_par_etp", 1582),
             type_montants=str(d.get("type_montants", "HT")),
+            dividendes_cibles=num("dividendes_cibles", 0.0),
         )
 
 
@@ -165,6 +167,11 @@ def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # ---- SEUIL DE RENTABILITÉ (feuille VIABILITÉ) ----------------------
     seuil_ca = (couts_fixes / taux_marge_brute) if taux_marge_brute > 0 else None
+    # Seuil incluant les prélèvements / dividendes cibles de la fondatrice.
+    seuil_ca_avec_dividendes = (
+        ((couts_fixes + p.dividendes_cibles) / taux_marge_brute)
+        if taux_marge_brute > 0 else None
+    )
 
     marge_brute_brute = sum(l["marge_brute"] for l in lignes_offres)
     for l in lignes_offres:
@@ -203,8 +210,10 @@ def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
             "marge_nette": marge_nette,
             "taux_marge_brute": taux_marge_brute,
             "seuil_ca": seuil_ca,
+            "seuil_ca_avec_dividendes": seuil_ca_avec_dividendes,
+            "dividendes_cibles": p.dividendes_cibles,
             "taux_couverture": taux_couverture,
-            "viable": marge_nette >= 0,
+            "viable": marge_nette >= p.dividendes_cibles,
         },
         "compte_resultat": {
             "chiffre_affaires": ca_total,
