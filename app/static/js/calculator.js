@@ -59,6 +59,7 @@ function collect() {
       taux_cotisations_patronales: (parseFloat(document.getElementById("taux_cotisations_patronales").value) || 0) / 100,
       taux_taxe_salaires: (parseFloat(document.getElementById("taux_taxe_salaires").value) || 0) / 100,
       heures_par_etp: parseFloat(document.getElementById("heures_par_etp").value) || 1582,
+      dividendes_cibles: parseFloat(document.getElementById("dividendes_cibles").value) || 0,
     },
     charges_externes: [...document.querySelectorAll("#charges .row")].map(el => ({
       description: val(el, ".c-desc"), frequence: val(el, ".c-freq"), montant_unitaire: num(el, ".c-mont"),
@@ -98,8 +99,17 @@ async function recalc() {
   mn.textContent = eur(t.marge_nette);
   mn.className = "val " + (t.marge_nette >= 0 ? "pos" : "neg");
   document.getElementById("k-seuil").textContent = eur(t.seuil_ca);
+  // Seuil avec dividendes — visible seulement si un objectif est renseigné
+  const divRow = document.getElementById("kpi-div-row");
+  if (t.dividendes_cibles > 0) {
+    divRow.style.display = "";
+    document.getElementById("k-seuil-div").textContent = eur(t.seuil_ca_avec_dividendes);
+  } else {
+    divRow.style.display = "none";
+  }
   document.getElementById("k-couv").textContent = pct(t.taux_couverture);
 
+  // Compte de résultat
   document.getElementById("pl").innerHTML = `
     <tr><td>Chiffre d'affaires</td><td>${eur(cr.chiffre_affaires)}</td></tr>
     <tr><td>− Coûts variables</td><td>${eur(-cr.couts_variables)}</td></tr>
@@ -144,12 +154,14 @@ function load(data) {
   if (p.taux_cotisations_patronales !== undefined) document.getElementById("taux_cotisations_patronales").value = p.taux_cotisations_patronales * 100;
   if (p.taux_taxe_salaires !== undefined) document.getElementById("taux_taxe_salaires").value = p.taux_taxe_salaires * 100;
   if (p.heures_par_etp !== undefined) document.getElementById("heures_par_etp").value = p.heures_par_etp;
+  if (p.dividendes_cibles !== undefined) document.getElementById("dividendes_cibles").value = p.dividendes_cibles;
 
   (data.charges_externes || []).forEach(addCharge);
   (data.equipe || []).forEach(addRole);
   (data.investissements || []).forEach(addInvest);
   (data.offres || []).forEach(addOffre);
 
+  // Exemple par défaut si modèle vide, pour guider l'utilisatrice.
   if (!(data.offres || []).length && !(data.charges_externes || []).length) {
     addCharge({ description: "Loyer & assurances", frequence: "mensuel", montant_unitaire: 400 });
     addRole({ description: "Moi (fondatrice)", etp: 1, remuneration_nette_mensuelle: 1800 });
