@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Passer à Athena Pro — Athena{% endblock %}
+{% block content %}
+<div class="container" style="padding:48px 24px 80px;max-width:800px">
+
+  <div style="text-align:center;margin-bottom:48px">
+    <h1 style="font-size:2rem;margin-bottom:12px">Choisissez votre formule</h1>
+    <p class="muted" style="font-size:1.05rem;max-width:540px;margin:0 auto">
+      Athena est gratuit pour commencer. La formule Pro débloque les analyses avancées pour piloter votre croissance.
+    </p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+    <!-- Formule Gratuite -->
+    <div class="card" style="padding:28px">
+      <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px">Compte gratuit</div>
+      <div style="font-size:2.2rem;font-weight:800;color:var(--texte);margin:12px 0">0 €</div>
+      <p class="muted" style="font-size:.88rem;margin-bottom:20px">Pour commencer à modéliser votre projet.</p>
+      <ul class="plan-features">
+        <li>✓ Calculateur de viabilité complet</li>
+        <li>✓ Sauvegarde de vos modèles</li>
+        <li>✓ Charges, équipe, investissements, offres</li>
+        <li>✓ Compte de résultat simplifié</li>
+        <li>✓ Graphique revenus vs coûts</li>
+        <li>✓ Export PDF</li>
+      </ul>
+      {% if user %}
+        <a href="/tableau-de-bord" class="btn ghost" style="width:100%;text-align:center;margin-top:24px">Mon tableau de bord</a>
+      {% else %}
+        <a href="/inscription" class="btn ghost" style="width:100%;text-align:center;margin-top:24px">Créer un compte</a>
+      {% endif %}
+    </div>
+
+    <!-- Formule Pro -->
+    <div class="card" style="padding:28px;border:2px solid var(--violet);position:relative">
+      <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--violet);color:#fff;font-size:.75rem;font-weight:700;padding:4px 16px;border-radius:20px">RECOMMANDÉ</div>
+      <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px">Athena Pro ⭐</div>
+      <div style="font-size:2.2rem;font-weight:800;color:var(--violet);margin:12px 0">5 € <span style="font-size:1rem;color:var(--gris);font-weight:400">/ mois</span></div>
+      <p class="muted" style="font-size:.88rem;margin-bottom:20px">Toutes les fonctionnalités + analyses avancées.</p>
+      <ul class="plan-features">
+        <li>✓ Tout de la formule gratuite</li>
+        <li>⭐ Projection sur 3 ans</li>
+        <li>⭐ Comparaison 3 scénarios (pessimiste / optimiste)</li>
+        <li>⭐ Trésorerie mensuelle estimée</li>
+        <li>⭐ Calcul IS (impôt sur les bénéfices)</li>
+        <li>⭐ Analyse CAC & LTV (abonnements)</li>
+      </ul>
+      <div style="margin-top:24px;background:var(--violet-pale);border-radius:10px;padding:14px;font-size:.85rem;text-align:center;color:var(--violet)">
+        <strong>Bientôt disponible</strong><br>
+        <span class="muted">Paiement en ligne en cours d'intégration.</span><br>
+        Contactez-nous : <a href="mailto:contact@athena-bm.fr">contact@athena-bm.fr</a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<style>
+.plan-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.plan-features li { font-size: .88rem; color: var(--texte); }
+.plan-features li:not(:last-child) { border-bottom: 1px solid var(--bord); padding-bottom: 8px; }
+@media (max-width: 600px) { [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; } }
+</style>
+{% endblock %}

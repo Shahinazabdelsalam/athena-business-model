@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Administration — Athena{% endblock %}
+{% block content %}
+<div class="container" style="padding-top:32px;padding-bottom:60px">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:28px">
+    <div>
+      <h1 style="margin:0">🛠️ Administration</h1>
+      <p class="muted" style="margin:4px 0 0">Vue d'ensemble des utilisatrices et des modèles.</p>
+    </div>
+    <a class="btn ghost small" href="/tableau-de-bord">← Mon tableau de bord</a>
+  </div>
+
+  <!-- Statistiques globales -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:32px">
+    <div class="card" style="padding:20px;text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--violet)">{{ users | length }}</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Utilisatrices inscrites</div>
+    </div>
+    <div class="card" style="padding:20px;text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--vert)">{{ users | selectattr('is_premium') | list | length }}</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Comptes Premium</div>
+    </div>
+    <div class="card" style="padding:20px;text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--or)">{{ total_models }}</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Modèles créés</div>
+    </div>
+  </div>
+
+  <!-- Table utilisatrices -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <thead>
+        <tr style="background:var(--fond);border-bottom:2px solid var(--bord)">
+          <th style="padding:12px 16px;text-align:left;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">#</th>
+          <th style="padding:12px 16px;text-align:left;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Email</th>
+          <th style="padding:12px 16px;text-align:left;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Nom</th>
+          <th style="padding:12px 16px;text-align:center;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Modèles</th>
+          <th style="padding:12px 16px;text-align:center;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Statut</th>
+          <th style="padding:12px 16px;text-align:left;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Inscription</th>
+          <th style="padding:12px 16px;text-align:center;font-size:.78rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr style="border-bottom:1px solid var(--bord){% if u.is_premium %};background:rgba(31,158,120,.04){% endif %}">
+          <td style="padding:12px 16px;color:var(--gris)">{{ u.id }}</td>
+          <td style="padding:12px 16px;font-weight:600">{{ u.email }}</td>
+          <td style="padding:12px 16px;color:var(--gris)">{{ u.nom or "—" }}</td>
+          <td style="padding:12px 16px;text-align:center">{{ u.models | length }}</td>
+          <td style="padding:12px 16px;text-align:center">
+            {% if u.is_premium %}
+              <span style="background:var(--vert-pale);color:var(--vert);font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px">⭐ Premium</span>
+            {% else %}
+              <span style="background:var(--fond);color:var(--gris);font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid var(--bord)">Gratuit</span>
+            {% endif %}
+          </td>
+          <td style="padding:12px 16px;color:var(--gris);font-size:.82rem">
+            {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}
+          </td>
+          <td style="padding:12px 16px;text-align:center">
+            <form method="post" action="/admin/toggle-premium/{{ u.id }}" style="display:inline">
+              <button type="submit" class="btn small {% if u.is_premium %}ghost{% else %}vert{% endif %}" style="font-size:.78rem;padding:5px 12px">
+                {% if u.is_premium %}Rétrograder{% else %}Activer Pro{% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="padding:24px;text-align:center;color:var(--gris)">Aucune utilisatrice inscrite.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

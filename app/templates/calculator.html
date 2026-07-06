@@ -2,6 +2,17 @@
 {% block title %}{% if model %}{{ model.nom }}{% else %}Essayer{% endif %} — Athena{% endblock %}
 {% block content %}
 <div class="container">
+  <!-- Visible uniquement à l'impression -->
+  <div class="print-header">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6a2c91,#a06cd5);display:grid;place-items:center;color:#fff;font-size:1rem">A</div>
+      <strong style="font-size:14pt;color:#6a2c91">Athena</strong>
+    </div>
+    <h1 id="print-titre" style="margin:0 0 2px;font-size:20pt"></h1>
+    <p style="margin:0;color:#666;font-size:9pt" id="print-date"></p>
+    <hr style="border:none;border-top:2px solid #6a2c91;margin:8px 0 0">
+  </div>
+
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:24px">
     <div>
       <h1 id="titre-modele" style="margin:0">{% if model %}{{ model.nom }}{% else %}Mode découverte{% endif %}</h1>
@@ -12,6 +23,7 @@
     </div>
     <div style="display:flex;gap:8px">
       {% if model %}<button class="btn vert" onclick="sauvegarder()">💾 Sauvegarder</button>{% endif %}
+      <button class="btn ghost small" onclick="imprimerModele()">🖨️ Exporter PDF</button>
       <a class="btn ghost small" href="/tableau-de-bord">← Mes modèles</a>
     </div>
   </div>
@@ -34,6 +46,12 @@
           <div><label>Heures/an par ETP <span class="tip" data-tip="Temps légal annuel en France pour un temps plein (35h × 52 semaines − jours fériés). Ne change que si tu travailles plus ou moins.">?</span></label><input type="number" id="heures_par_etp" value="1582" step="1" min="1"></div>
           <div><label>💰 Prélèvements / dividendes cibles (€/an) <span class="tip" data-tip="Ce que tu veux te verser (dividendes, prélèvements). Utilisé pour calculer un seuil de rentabilité réel qui couvre aussi ta rémunération.">?</span></label><input type="number" id="dividendes_cibles" value="0" step="500" min="0"></div>
         </div>
+        {% if model and user and user.is_premium %}
+        <div class="check" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bord)">
+          <input type="checkbox" id="inclure_is">
+          <label for="inclure_is" style="margin:0">Calculer l'IS <small style="color:var(--gris);font-weight:400">(société : 15 % jusqu'à 42 500 €, puis 25 %)</small></label>
+        </div>
+        {% endif %}
       </div>
 
       <div class="section">
@@ -69,6 +87,51 @@
         <div id="offres"></div>
         <button class="add-line" onclick="addOffre()">+ Ajouter une offre</button>
       </div>
+
+      {% if model and user and user.is_premium %}
+      <div class="section">
+        <h3>📅 Projection pluriannuelle</h3>
+        <p class="hint">Taux de croissance annuels appliqués pour simuler les années 2 et 3.</p>
+        <div class="params-grid">
+          <div><label>Croissance CA (%/an)</label><input type="number" id="croissance_ca" value="10" step="1" min="-50" max="200"></div>
+          <div><label>Évolution charges (%/an)</label><input type="number" id="croissance_charges" value="3" step="1" min="-50" max="100"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>🎭 Scénarios de volume</h3>
+        <p class="hint">Multiplicateurs appliqués au volume de toutes vos offres (1 = réaliste).</p>
+        <div class="params-grid">
+          <div><label>Pessimiste (×)</label><input type="number" id="sc_pessimiste" value="0.6" step="0.05" min="0.1" max="2"></div>
+          <div><label>Optimiste (×)</label><input type="number" id="sc_optimiste" value="1.5" step="0.05" min="0.5" max="5"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>📈 Acquisition & rétention</h3>
+        <p class="hint">Pour les offres à abonnement — modélise la valeur vie client.</p>
+        <div class="params-grid">
+          <div><label>CAC (€/client)</label><input type="number" id="acq_cac" step="10" min="0" placeholder="ex : 120"></div>
+          <div><label>Prix mensuel moyen (€)</label><input type="number" id="acq_prix_mensuel" step="5" min="0" placeholder="ex : 50"></div>
+          <div><label>Churn mensuel (%)</label><input type="number" id="acq_churn" step="0.5" min="0" max="100" placeholder="ex : 3"></div>
+          <div><label>Budget acquisition/an (€)</label><input type="number" id="acq_budget" step="100" min="0" placeholder="ex : 5000"></div>
+        </div>
+      </div>
+      {% elif model %}
+      <!-- Upgrade prompt dans la colonne de saisie -->
+      <div class="section upgrade-banner">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <span style="font-size:1.8rem;flex-shrink:0">⭐</span>
+          <div>
+            <strong style="font-size:.95rem">Fonctionnalités Pro</strong>
+            <p class="muted" style="font-size:.83rem;margin:4px 0 12px">
+              Projection 3 ans, comparaison de scénarios, trésorerie mensuelle, IS et CAC/LTV — disponibles avec Athena Pro.
+            </p>
+            <a href="/upgrade" class="btn small" style="display:inline-block">Voir l'offre Pro →</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     <!-- COLONNE RÉSULTATS -->
@@ -95,6 +158,46 @@
         <h3>🧾 Compte de résultat simplifié</h3>
         <table class="pl-table" id="pl"></table>
       </div>
+
+      {% if model and user and user.is_premium %}
+      <div class="section">
+        <h3>📅 Projection 3 ans</h3>
+        <p class="hint" style="margin-bottom:10px">Basée sur les taux de croissance définis dans vos paramètres.</p>
+        <table class="pl-table" id="proj-table"></table>
+      </div>
+
+      <div class="section">
+        <h3>🎭 Comparaison scénarios</h3>
+        <p class="hint" style="margin-bottom:10px">Pessimiste, réaliste et optimiste sur le volume de ventes.</p>
+        <table class="pl-table" id="sc-table"></table>
+      </div>
+
+      <div class="section">
+        <h3>🏦 Trésorerie mensuelle estimée</h3>
+        <p class="hint" style="margin-bottom:10px">Revenus et charges distribués mois par mois selon leur fréquence.</p>
+        <div style="position:relative;height:200px"><canvas id="chart-treso"></canvas></div>
+      </div>
+
+      <div class="section" id="section-acq" style="display:none">
+        <h3>📈 CAC & LTV</h3>
+        <p class="hint" style="margin-bottom:10px">Métriques d'acquisition calculées depuis vos paramètres.</p>
+        <div id="acq-results"></div>
+      </div>
+      {% elif model %}
+      <!-- Upgrade prompt dans la colonne résultats -->
+      <div class="section upgrade-banner">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <span style="font-size:1.8rem;flex-shrink:0">⭐</span>
+          <div>
+            <strong style="font-size:.95rem">Analyses avancées — Athena Pro</strong>
+            <p class="muted" style="font-size:.83rem;margin:4px 0 12px">
+              Projection pluriannuelle, scénarios de volume, trésorerie mensuelle, impôt IS et analyse d'acquisition disponibles pour 5 €/mois.
+            </p>
+            <a href="/upgrade" class="btn small">Passer à Pro →</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -371,6 +474,87 @@ function wz_appliquer() {
   window.MODEL_ID = {% if model %}{{ model.id }}{% else %}null{% endif %};
   window.MODEL_DATA = {{ model_data | tojson | safe if model_data else "{}" }};
 </script>
+<script>
+function imprimerModele() {
+  const titre = document.getElementById("titre-modele").textContent.trim();
+  document.getElementById("print-titre").textContent = titre;
+  const now = new Date();
+  document.getElementById("print-date").textContent =
+    "Exporté le " + now.toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
+  window.print();
+}
+</script>
+<style>
+@media print {
+  /* ---- Masquer les éléments non imprimables ---- */
+  .nav,
+  footer,
+  .toast,
+  #wizard-overlay,
+  .btn-wizard,
+  .btn,
+  .add-line,
+  .mini-btn,
+  .etp-explainer,
+  .hint,
+  .section .hint,
+  button { display: none !important; }
+
+  /* ---- Mise en page print ---- */
+  body { background: #fff; color: #000; font-size: 11pt; }
+  .container { max-width: 100%; padding: 0 12mm; }
+
+  /* En-tête du modèle */
+  #titre-modele { font-size: 18pt; margin-bottom: 2mm; }
+
+  /* Afficher en deux colonnes côte à côte */
+  .calc {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 10mm;
+    padding: 0;
+  }
+
+  /* Sections */
+  .section {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .section > h3 { font-size: 11pt; margin: 0 0 6px; }
+
+  /* Résultats — plus sticky */
+  .results { position: static; }
+
+  /* Verdict */
+  .verdict { border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .verdict.ok { background: #e6f6ef; color: #1f9e78; border: 1.5px solid #1f9e78; }
+  .verdict.ko { background: #fbe9ea; color: #d64550; border: 1.5px solid #d64550; }
+
+  /* Inputs — apparence lisible (pas de border interactive) */
+  input, select {
+    border: 1px solid #ddd;
+    background: #fafafa;
+    font-size: 10pt;
+  }
+
+  /* KPI rows */
+  .kpi { font-size: 10pt; padding: 5px 0; }
+
+  /* P&L table */
+  .pl-table { font-size: 10pt; }
+
+  /* Chart — forcer une hauteur fixe pour l'impression */
+  canvas { max-height: 160px !important; }
+
+  /* Sauts de page */
+  .inputs  { page-break-after: avoid; }
+  .results { page-break-before: avoid; }
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <script src="/static/js/calculator.js"></script>
 {% endblock %}

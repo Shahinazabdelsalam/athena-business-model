@@ -129,5 +129,37 @@ input:focus, select:focus { outline: none; border-color: var(--violet-clair); }
 .pl-table tr.total td { font-weight: 800; border-top: 2px solid var(--texte); }
 
 footer { text-align: center; padding: 30px; color: var(--gris); font-size: 0.85rem; border-top: 1px solid var(--bord); background: var(--blanc); }
+
+/* ---- Print header (screen: hidden) ---- */
+.print-header { display: none; }
+@media print { .print-header { display: block; margin-bottom: 10mm; } }
+
+/* ---- Google sign-in button ---- */
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 11px 20px; border-radius: 999px;
+  border: 1.5px solid var(--bord); background: var(--blanc); color: var(--texte);
+  font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none;
+  transition: border-color .15s, box-shadow .2s; margin-bottom: 16px;
+}
+.btn-google:hover { border-color: #aaa; box-shadow: 0 2px 8px rgba(0,0,0,.08); text-decoration: none; }
+
+/* ---- Divider "ou" ---- */
+.divider-text {
+  text-align: center; color: var(--gris); font-size: .82rem;
+  position: relative; margin: 14px 0;
+}
+.divider-text::before, .divider-text::after {
+  content: ''; position: absolute; top: 50%;
+  width: 42%; height: 1px; background: var(--bord);
+}
+.divider-text::before { left: 0; }
+.divider-text::after  { right: 0; }
+
+/* ---- Upgrade banner ---- */
+.upgrade-banner {
+  background: linear-gradient(135deg, var(--violet-pale), #fff);
+  border: 1.5px solid var(--violet-clair) !important;
+}
 .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--vert); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: var(--ombre); opacity: 0; transition: opacity .3s; z-index: 50; }
 .toast.show { opacity: 1; }
