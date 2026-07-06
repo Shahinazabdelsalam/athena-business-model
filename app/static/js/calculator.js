@@ -22,7 +22,7 @@ function charge(d = {}) {
 function role(d = {}) {
   return `<div class="row equipe">
     <div><div class="col-label">Rôle</div><input class="e-desc" type="text" value="${d.description || ""}" placeholder="Direction"></div>
-    <div><div class="col-label">ETP</div><input class="e-etp" type="number" step="0.1" value="${d.etp ?? ""}"></div>
+    <div><div class="col-label">ETP <span class="tip" data-tip="Équivalent Temps Plein. 1 = plein temps, 0,5 = mi-temps. Toi à 80% = 0,8.">?</span></div><input class="e-etp" type="number" step="0.1" value="${d.etp ?? ""}"></div>
     <div><div class="col-label">Net mensuel/ETP</div><input class="e-net" type="number" step="50" value="${d.remuneration_nette_mensuelle ?? ""}"></div>
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
@@ -100,7 +100,6 @@ async function recalc() {
   document.getElementById("k-seuil").textContent = eur(t.seuil_ca);
   document.getElementById("k-couv").textContent = pct(t.taux_couverture);
 
-  // Compte de résultat
   document.getElementById("pl").innerHTML = `
     <tr><td>Chiffre d'affaires</td><td>${eur(cr.chiffre_affaires)}</td></tr>
     <tr><td>− Coûts variables</td><td>${eur(-cr.couts_variables)}</td></tr>
@@ -151,7 +150,6 @@ function load(data) {
   (data.investissements || []).forEach(addInvest);
   (data.offres || []).forEach(addOffre);
 
-  // Exemple par défaut si modèle vide, pour guider l'utilisatrice.
   if (!(data.offres || []).length && !(data.charges_externes || []).length) {
     addCharge({ description: "Loyer & assurances", frequence: "mensuel", montant_unitaire: 400 });
     addRole({ description: "Moi (fondatrice)", etp: 1, remuneration_nette_mensuelle: 1800 });
