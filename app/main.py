@@ -36,12 +36,12 @@ app = FastAPI(title="Athena Business Model")
 # --------------------------------------------------------------------------
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
 
-# Stripe — abonnement Athena Pro : 3 mois gratuits puis 4,99 €/mois.
+# Stripe — abonnement Athena Pro : 30 jours gratuits puis 4,99 €/mois.
 STRIPE_SECRET_KEY     = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_ID       = os.getenv("STRIPE_PRICE_ID", "")  # optionnel : sinon prix créé à la volée
 PRO_PRICE_CENTS = 499
-PRO_TRIAL_DAYS  = int(os.getenv("PRO_TRIAL_DAYS", "90"))
+PRO_TRIAL_DAYS  = int(os.getenv("PRO_TRIAL_DAYS", "30"))
 
 # Comptes gratuits : nombre maximum de modèles (illimité en Pro).
 FREE_MODEL_LIMIT = 2
