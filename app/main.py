@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 import stripe
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import inspect, text
@@ -35,6 +35,7 @@ app = FastAPI(title="Athena Business Model")
 # Config
 # --------------------------------------------------------------------------
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+SITE_URL = os.getenv("SITE_URL", "https://athenamodel.entangleeq.com")
 
 # Stripe — abonnement Athena Pro : 30 jours gratuits puis 4,99 €/mois.
 STRIPE_SECRET_KEY     = os.getenv("STRIPE_SECRET_KEY", "")
@@ -52,6 +53,7 @@ if STRIPE_SECRET_KEY:
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.globals["admin_email"] = ADMIN_EMAIL
+templates.env.globals["site_url"] = SITE_URL
 
 GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -621,6 +623,43 @@ def api_delete_model(model_id: int, request: Request, db: Session = Depends(get_
     db.delete(model)
     db.commit()
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# SEO — référencement Google
+# --------------------------------------------------------------------------
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots():
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /tableau-de-bord\n"
+        "Disallow: /modele/\n"
+        "Disallow: /api/\n"
+        f"Sitemap: {SITE_URL}/sitemap.xml\n"
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap():
+    pages = [
+        ("/", "weekly", "1.0"),
+        ("/essayer", "weekly", "0.9"),
+        ("/upgrade", "monthly", "0.8"),
+        ("/inscription", "monthly", "0.7"),
+        ("/connexion", "monthly", "0.3"),
+    ]
+    urls = "".join(
+        f"<url><loc>{SITE_URL}{path}</loc><changefreq>{freq}</changefreq><priority>{prio}</priority></url>"
+        for path, freq, prio in pages
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{urls}</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 @app.get("/sante")

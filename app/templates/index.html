@@ -1,12 +1,14 @@
 {% extends "base.html" %}
+{% block title %}Créer son business model gratuitement — Athena, l'outil de viabilité pour femmes entrepreneuses{% endblock %}
+{% block description %}Créez votre business model en ligne gratuitement et vérifiez si votre projet d'entreprise est rentable : coûts fixes, marge, seuil de rentabilité, compte de résultat. Pensé pour les femmes entrepreneuses, sans jargon comptable.{% endblock %}
 {% block content %}
 <section class="hero">
   <h1>Construisez un projet <span class="accent">viable</span>,<br>à vos conditions.</h1>
   <p class="lead">
-    Athena aide les femmes entrepreneuses à vérifier, sur une année-type, que
-    leurs revenus couvrent leurs coûts. Coûts fixes, offres, marge, seuil de
-    rentabilité : une vision claire pour convaincre — banques, investisseur·ses,
-    et surtout vous-même.
+    Athena aide les femmes entrepreneuses à créer leur <strong>business model</strong> et à
+    vérifier, sur une année-type, que leurs revenus couvrent leurs coûts. Coûts fixes,
+    offres, marge, seuil de rentabilité : une vision claire pour convaincre — banques,
+    investisseur·ses, et surtout vous-même.
   </p>
   <div class="cta">
     <a href="/essayer" class="btn">Tester l'outil gratuitement</a>
@@ -38,10 +40,69 @@
     </div>
   </div>
 
+  <section style="max-width:760px;margin:0 auto 60px">
+    <h2 style="text-align:center;margin-bottom:24px">Questions fréquentes</h2>
+    <details class="faq-item">
+      <summary>Comment créer un business model quand on lance son entreprise ?</summary>
+      <p>Listez vos coûts fixes (loyer, logiciels, comptable…), vos offres avec leur prix, et le volume de ventes que vous visez. Athena calcule automatiquement votre marge, votre seuil de rentabilité et un compte de résultat simplifié : vous savez en quelques minutes si votre projet tient la route.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Comment savoir si mon projet d'entreprise est rentable ?</summary>
+      <p>Votre projet est viable quand votre chiffre d'affaires couvre vos coûts fixes et variables, y compris votre propre rémunération. Athena affiche votre seuil de rentabilité : le chiffre d'affaires minimum à atteindre, et le nombre de ventes que cela représente offre par offre.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Athena est-il gratuit ?</summary>
+      <p>Oui : le calculateur complet est gratuit, avec 2 modèles sauvegardés et l'export PDF. La formule Pro (30 jours gratuits puis 4,99 €/mois, sans engagement) ajoute les modèles illimités, la projection sur 3 ans, les scénarios, la trésorerie mensuelle, l'impôt IS et l'analyse CAC/LTV.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Faut-il des connaissances en comptabilité ?</summary>
+      <p>Non. Athena est pensé pour les entrepreneuses qui débutent : vous saisissez vos chiffres en langage courant, l'outil s'occupe des calculs et vous explique chaque indicateur.</p>
+    </details>
+  </section>
+
   <div class="card center" style="margin-bottom:60px">
     <h2>Prête à chiffrer votre projet ?</h2>
-    <p class="muted">Créez un compte gratuit et sauvegardez autant de modèles que vous voulez.</p>
+    <p class="muted">Créez un compte gratuit : 2 modèles sauvegardés, illimités avec Athena Pro.</p>
     <a href="/inscription" class="btn">Je me lance</a>
   </div>
 </div>
+
+<style>
+.faq-item { border: 1px solid var(--bord); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; background: #fff; }
+.faq-item summary { font-weight: 700; cursor: pointer; font-size: .95rem; }
+.faq-item p { margin: 10px 0 4px; font-size: .9rem; color: var(--gris); line-height: 1.55; }
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Athena Business Model",
+  "url": "{{ site_url }}",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "fr",
+  "description": "Outil en ligne pour créer son business model et tester la viabilité de son projet d'entreprise : coûts, marge, seuil de rentabilité, compte de résultat. Pensé pour les femmes entrepreneuses.",
+  "offers": [
+    {"@type": "Offer", "name": "Gratuit", "price": "0", "priceCurrency": "EUR"},
+    {"@type": "Offer", "name": "Athena Pro", "price": "4.99", "priceCurrency": "EUR"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Comment créer un business model quand on lance son entreprise ?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Listez vos coûts fixes, vos offres avec leur prix et le volume de ventes visé. Athena calcule automatiquement votre marge, votre seuil de rentabilité et un compte de résultat simplifié."}},
+    {"@type": "Question", "name": "Comment savoir si mon projet d'entreprise est rentable ?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Votre projet est viable quand votre chiffre d'affaires couvre vos coûts fixes et variables, y compris votre rémunération. Athena affiche votre seuil de rentabilité et le nombre de ventes nécessaires."}},
+    {"@type": "Question", "name": "Athena est-il gratuit ?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Oui, le calculateur complet est gratuit avec 2 modèles sauvegardés et l'export PDF. La formule Pro (30 jours gratuits puis 4,99 €/mois) ajoute les modèles illimités et les analyses avancées."}},
+    {"@type": "Question", "name": "Faut-il des connaissances en comptabilité ?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Non, Athena est pensé pour les entrepreneuses qui débutent : vous saisissez vos chiffres, l'outil s'occupe des calculs et explique chaque indicateur."}}
+  ]
+}
+</script>
 {% endblock %}
