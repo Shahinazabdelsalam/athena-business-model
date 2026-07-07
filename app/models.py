@@ -15,6 +15,8 @@ class User(Base):
     nom = Column(String(255), nullable=True)
     password_hash = Column(String(255), nullable=True)
     is_premium = Column(Boolean, nullable=False, default=False, server_default="false")
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     models = relationship(

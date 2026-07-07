@@ -13,6 +13,7 @@ import urllib.parse
 from pathlib import Path
 
 import httpx
+import stripe
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +35,16 @@ app = FastAPI(title="Athena Business Model")
 # Config
 # --------------------------------------------------------------------------
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+
+# Stripe — abonnement Athena Pro : 3 mois gratuits puis 4,99 €/mois.
+STRIPE_SECRET_KEY     = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_ID       = os.getenv("STRIPE_PRICE_ID", "")  # optionnel : sinon prix créé à la volée
+PRO_PRICE_CENTS = 499
+PRO_TRIAL_DAYS  = int(os.getenv("PRO_TRIAL_DAYS", "90"))
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -77,6 +88,17 @@ def _migrate():
                     ))
                 conn.commit()
                 logger.info("Migration: added is_premium column to users.")
+
+            for col in ("stripe_customer_id", "stripe_subscription_id"):
+                if col not in existing:
+                    if engine.dialect.name == "postgresql":
+                        conn.execute(text(
+                            f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} VARCHAR(255)"
+                        ))
+                    else:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR(255)"))
+                    conn.commit()
+                    logger.info("Migration: added %s column to users.", col)
 
             if "password_hash" in existing:
                 # Rend la colonne nullable pour les comptes Google (si ce n'est pas déjà le cas).
@@ -279,15 +301,19 @@ async def google_callback(
     return resp
 
 
+def _external_base_url(request: Request) -> str:
+    # Reconstruit l'URL publique depuis la requête en forçant HTTPS si derrière un proxy.
+    base = str(request.base_url).rstrip("/")
+    if base.startswith("http://") and not base.startswith("http://localhost"):
+        base = "https://" + base[7:]
+    return base
+
+
 def _google_redirect_uri(request: Request) -> str:
     env_uri = os.getenv("GOOGLE_REDIRECT_URI", "")
     if env_uri:
         return env_uri
-    # Reconstruit l'URI depuis la requête en forçant HTTPS si derrière un proxy.
-    base = str(request.base_url).rstrip("/")
-    if base.startswith("http://") and not base.startswith("http://localhost"):
-        base = "https://" + base[7:]
-    return base + "/auth/google/callback"
+    return _external_base_url(request) + "/auth/google/callback"
 
 
 # --------------------------------------------------------------------------
@@ -338,12 +364,134 @@ def try_page(request: Request, db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------
-# Page abonnement / upgrade
+# Page abonnement / upgrade + Stripe
 # --------------------------------------------------------------------------
 @app.get("/upgrade", response_class=HTMLResponse)
 def upgrade_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
-    return templates.TemplateResponse("upgrade.html", {"request": request, "user": user})
+    return templates.TemplateResponse("upgrade.html", {
+        "request": request,
+        "user": user,
+        "stripe_enabled": bool(STRIPE_SECRET_KEY),
+        "error": request.query_params.get("error"),
+    })
+
+
+@app.post("/stripe/checkout")
+def stripe_checkout(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/connexion", status_code=303)
+    if user.is_premium:
+        return RedirectResponse("/tableau-de-bord", status_code=303)
+    if not STRIPE_SECRET_KEY:
+        return RedirectResponse("/upgrade?error=paiement_indisponible", status_code=303)
+
+    if STRIPE_PRICE_ID:
+        line_item = {"price": STRIPE_PRICE_ID, "quantity": 1}
+    else:
+        line_item = {
+            "price_data": {
+                "currency": "eur",
+                "unit_amount": PRO_PRICE_CENTS,
+                "recurring": {"interval": "month"},
+                "product_data": {"name": "Athena Pro"},
+            },
+            "quantity": 1,
+        }
+
+    base = _external_base_url(request)
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[line_item],
+            subscription_data={"trial_period_days": PRO_TRIAL_DAYS},
+            customer=user.stripe_customer_id or None,
+            customer_email=None if user.stripe_customer_id else user.email,
+            client_reference_id=str(user.id),
+            success_url=base + "/stripe/succes?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=base + "/upgrade",
+            allow_promotion_codes=True,
+        )
+    except Exception as exc:
+        logger.error("Stripe checkout creation failed: %s", exc)
+        return RedirectResponse("/upgrade?error=paiement_indisponible", status_code=303)
+    return RedirectResponse(session.url, status_code=303)
+
+
+@app.get("/stripe/succes")
+def stripe_success(request: Request, session_id: str = "", db: Session = Depends(get_db)):
+    """Retour de Checkout : active Pro immédiatement sans attendre le webhook."""
+    user = get_current_user(request, db)
+    if user and session_id and STRIPE_SECRET_KEY:
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+            if session.client_reference_id == str(user.id) and session.status == "complete":
+                user.is_premium = True
+                user.stripe_customer_id = session.customer
+                user.stripe_subscription_id = session.subscription
+                db.commit()
+        except Exception as exc:
+            logger.error("Stripe success verification failed: %s", exc)
+    return RedirectResponse("/tableau-de-bord?pro=1", status_code=303)
+
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """Source de vérité : activation à la souscription, désactivation à la résiliation."""
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Webhook Stripe non configuré")
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, signature, STRIPE_WEBHOOK_SECRET)
+    except Exception as exc:
+        logger.warning("Stripe webhook rejeté : %s", exc)
+        raise HTTPException(status_code=400, detail="Signature invalide")
+
+    obj = event["data"]["object"]
+
+    if event["type"] == "checkout.session.completed":
+        uid = obj.get("client_reference_id")
+        target = db.query(User).filter(User.id == int(uid)).first() if uid else None
+        if target:
+            target.is_premium = True
+            target.stripe_customer_id = obj.get("customer")
+            target.stripe_subscription_id = obj.get("subscription")
+            db.commit()
+
+    elif event["type"] in ("customer.subscription.updated", "customer.subscription.deleted"):
+        target = (
+            db.query(User)
+            .filter(User.stripe_subscription_id == obj.get("id"))
+            .first()
+        ) or (
+            db.query(User)
+            .filter(User.stripe_customer_id == obj.get("customer"))
+            .first()
+        )
+        if target:
+            target.is_premium = obj.get("status") in ("active", "trialing")
+            db.commit()
+
+    return {"ok": True}
+
+
+@app.post("/stripe/portail")
+def stripe_portal(request: Request, db: Session = Depends(get_db)):
+    """Portail client Stripe : gérer sa carte, ses factures, résilier."""
+    user = require_user(request, db)
+    if not (STRIPE_SECRET_KEY and user.stripe_customer_id):
+        return RedirectResponse("/upgrade", status_code=303)
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=_external_base_url(request) + "/tableau-de-bord",
+        )
+    except Exception as exc:
+        logger.error("Stripe portal creation failed: %s", exc)
+        return RedirectResponse("/upgrade?error=paiement_indisponible", status_code=303)
+    return RedirectResponse(session.url, status_code=303)
 
 
 # --------------------------------------------------------------------------

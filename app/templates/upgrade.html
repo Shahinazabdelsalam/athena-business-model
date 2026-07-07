@@ -36,8 +36,11 @@
     <div class="card" style="padding:28px;border:2px solid var(--violet);position:relative">
       <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--violet);color:#fff;font-size:.75rem;font-weight:700;padding:4px 16px;border-radius:20px">RECOMMANDÉ</div>
       <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px">Athena Pro ⭐</div>
-      <div style="font-size:2.2rem;font-weight:800;color:var(--violet);margin:12px 0">5 € <span style="font-size:1rem;color:var(--gris);font-weight:400">/ mois</span></div>
-      <p class="muted" style="font-size:.88rem;margin-bottom:20px">Toutes les fonctionnalités + analyses avancées.</p>
+      <div style="margin:12px 0">
+        <div style="font-size:2.2rem;font-weight:800;color:var(--violet)">3 mois gratuits</div>
+        <div style="font-size:1.05rem;color:var(--gris)">puis 4,99 € / mois</div>
+      </div>
+      <p class="muted" style="font-size:.88rem;margin-bottom:20px">Toutes les fonctionnalités + analyses avancées. Sans engagement, annulable à tout moment.</p>
       <ul class="plan-features">
         <li>✓ Tout de la formule gratuite</li>
         <li>⭐ Projection sur 3 ans</li>
@@ -46,11 +49,34 @@
         <li>⭐ Calcul IS (impôt sur les bénéfices)</li>
         <li>⭐ Analyse CAC & LTV (abonnements)</li>
       </ul>
-      <div style="margin-top:24px;background:var(--violet-pale);border-radius:10px;padding:14px;font-size:.85rem;text-align:center;color:var(--violet)">
-        <strong>Bientôt disponible</strong><br>
-        <span class="muted">Paiement en ligne en cours d'intégration.</span><br>
-        Contactez-nous : <a href="mailto:contact@entangleeq.com">contact@entangleeq.com</a>
-      </div>
+      {% if user and user.is_premium %}
+        <div style="margin-top:24px;text-align:center">
+          <div style="background:var(--violet-pale);border-radius:10px;padding:14px;font-size:.9rem;color:var(--violet);font-weight:700;margin-bottom:12px">Vous êtes déjà Pro ✓</div>
+          <form method="post" action="/stripe/portail">
+            <button type="submit" class="btn ghost" style="width:100%">Gérer mon abonnement</button>
+          </form>
+        </div>
+      {% elif user and stripe_enabled %}
+        <form method="post" action="/stripe/checkout" style="margin-top:24px">
+          <button type="submit" class="btn" style="width:100%;font-size:1rem">Essayer 3 mois gratuits →</button>
+        </form>
+        <p class="muted" style="font-size:.78rem;text-align:center;margin-top:10px">
+          Carte demandée, aucun débit avant la fin des 3 mois.<br>Paiement sécurisé par Stripe.
+        </p>
+        {% if error %}
+        <p style="font-size:.82rem;text-align:center;color:#c0392b;margin-top:8px">
+          Le paiement est momentanément indisponible. Réessayez ou écrivez-nous : <a href="mailto:contact@entangleeq.com">contact@entangleeq.com</a>
+        </p>
+        {% endif %}
+      {% elif user %}
+        <div style="margin-top:24px;background:var(--violet-pale);border-radius:10px;padding:14px;font-size:.85rem;text-align:center;color:var(--violet)">
+          <strong>Bientôt disponible</strong><br>
+          <span class="muted">Paiement en ligne en cours d'intégration.</span><br>
+          Contactez-nous : <a href="mailto:contact@entangleeq.com">contact@entangleeq.com</a>
+        </div>
+      {% else %}
+        <a href="/inscription" class="btn" style="width:100%;text-align:center;margin-top:24px;display:block;box-sizing:border-box">Créer un compte pour commencer</a>
+      {% endif %}
     </div>
 
   </div>

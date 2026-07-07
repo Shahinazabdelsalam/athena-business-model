@@ -10,6 +10,12 @@
     <button class="btn" onclick="creerModele()">+ Nouveau modèle</button>
   </div>
 
+  {% if request.query_params.get("pro") %}
+  <div class="card" style="margin-top:20px;border:2px solid var(--violet);text-align:center;padding:18px">
+    ⭐ <strong>Bienvenue dans Athena Pro !</strong> Vos 3 mois gratuits ont commencé — les analyses avancées sont débloquées dans vos modèles.
+  </div>
+  {% endif %}
+
   {% if models %}
   <div class="grid-models">
     {% for m in models %}
