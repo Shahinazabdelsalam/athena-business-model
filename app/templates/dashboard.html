@@ -7,7 +7,16 @@
       <h1 style="margin:0">Bonjour {{ user.nom or "" }} 👋</h1>
       <p class="muted" style="margin:4px 0 0">Vos modèles économiques</p>
     </div>
-    <button class="btn" onclick="creerModele()">+ Nouveau modèle</button>
+    <div style="display:flex;align-items:center;gap:12px">
+      {% if not user.is_premium %}
+      <span class="muted" style="font-size:.85rem">{{ models|length }}/2 modèles gratuits</span>
+      {% endif %}
+      {% if not user.is_premium and models|length >= 2 %}
+      <a href="/upgrade" class="btn">⭐ Passer à Pro pour créer plus</a>
+      {% else %}
+      <button class="btn" onclick="creerModele()">+ Nouveau modèle</button>
+      {% endif %}
+    </div>
   </div>
 
   {% if request.query_params.get("pro") %}
@@ -43,6 +52,11 @@ async function creerModele(){
   if(!nom) return;
   const r = await fetch("/api/modeles", {method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({nom, data:{}})});
+  if(r.status === 403){
+    alert("Vous avez atteint la limite de 2 modèles gratuits. Passez à Athena Pro pour créer des modèles illimités.");
+    location.href = "/upgrade";
+    return;
+  }
   const j = await r.json();
   location.href = "/modele/" + j.id;
 }

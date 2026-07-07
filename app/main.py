@@ -43,6 +43,9 @@ STRIPE_PRICE_ID       = os.getenv("STRIPE_PRICE_ID", "")  # optionnel : sinon pr
 PRO_PRICE_CENTS = 499
 PRO_TRIAL_DAYS  = int(os.getenv("PRO_TRIAL_DAYS", "90"))
 
+# Comptes gratuits : nombre maximum de modèles (illimité en Pro).
+FREE_MODEL_LIMIT = 2
+
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
@@ -567,6 +570,13 @@ def api_list_models(request: Request, db: Session = Depends(get_db)):
 @app.post("/api/modeles")
 async def api_create_model(request: Request, db: Session = Depends(get_db)):
     user = require_user(request, db)
+    if not user.is_premium:
+        count = db.query(BusinessModel).filter(BusinessModel.user_id == user.id).count()
+        if count >= FREE_MODEL_LIMIT:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite gratuite atteinte (2 modèles). Passez à Athena Pro pour créer des modèles illimités.",
+            )
     body = await request.json()
     model = BusinessModel(
         user_id=user.id,
