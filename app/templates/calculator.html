@@ -572,12 +572,29 @@ function copierLien() {
   .verdict.ok { background: #e6f6ef; color: #1f9e78; border: 1.5px solid #1f9e78; }
   .verdict.ko { background: #fbe9ea; color: #d64550; border: 1.5px solid #d64550; }
 
-  /* Inputs — apparence lisible (pas de border interactive) */
+  /* Inputs — valeurs lisibles : on retire tout le superflu (bordures, padding,
+     flèches des champs nombre, flèche des menus) pour laisser la place au texte */
   input, select {
-    border: 1px solid #ddd;
-    background: #fafafa;
-    font-size: 10pt;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    border-radius: 0;
+    background: transparent;
+    font-size: 9pt;
+    padding: 1px 2px;
+    min-width: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
   }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Lignes de saisie plus aérées en largeur */
+  .row { gap: 4px; }
+  .row input, .row select { font-size: 8.5pt; }
+  .row .col-label { font-size: 6.5pt; letter-spacing: 0; }
+  .params-grid { gap: 4px; }
+  .params-grid label { font-size: 7pt; }
 
   /* KPI rows */
   .kpi { font-size: 10pt; padding: 5px 0; }
