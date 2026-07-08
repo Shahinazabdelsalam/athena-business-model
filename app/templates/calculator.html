@@ -499,6 +499,24 @@ function imprimerModele() {
   window.print();
 }
 
+/* À l'impression : on remplace chaque champ de saisie par sa valeur en texte,
+   pour qu'elle s'affiche en entier (un input coupe ce qui dépasse sa largeur). */
+function _printSwap() {
+  document.querySelectorAll(".inputs input:not([type=checkbox]), .inputs select").forEach(el => {
+    const span = document.createElement("span");
+    span.className = "print-value";
+    span.textContent = el.tagName === "SELECT"
+      ? (el.selectedOptions[0] ? el.selectedOptions[0].textContent : "")
+      : (el.value || "—");
+    el.insertAdjacentElement("afterend", span);
+  });
+}
+function _printRestore() {
+  document.querySelectorAll(".print-value").forEach(s => s.remove());
+}
+window.addEventListener("beforeprint", _printSwap);
+window.addEventListener("afterprint", _printRestore);
+
 function copierLien() {
   navigator.clipboard.writeText("{{ site_url }}").then(() => {
     const t = document.getElementById("toast");
@@ -510,6 +528,7 @@ function copierLien() {
 </script>
 <style>
 .print-footer { display: none; }
+.print-value { display: none; }
 
 @media print {
   /* ---- Masquer les éléments non imprimables ---- */
@@ -572,26 +591,21 @@ function copierLien() {
   .verdict.ok { background: #e6f6ef; color: #1f9e78; border: 1.5px solid #1f9e78; }
   .verdict.ko { background: #fbe9ea; color: #d64550; border: 1.5px solid #d64550; }
 
-  /* Inputs — valeurs lisibles : on retire tout le superflu (bordures, padding,
-     flèches des champs nombre, flèche des menus) pour laisser la place au texte */
-  input, select {
-    border: none;
+  /* Champs de saisie : masqués à l'impression, remplacés par leur valeur
+     en texte (spans .print-value créés par _printSwap au moment d'imprimer) */
+  .inputs input:not([type=checkbox]),
+  .inputs select { display: none !important; }
+  .print-value {
+    display: block;
+    font-size: 8.5pt;
+    padding: 1px 0 2px;
     border-bottom: 1px solid #ddd;
-    border-radius: 0;
-    background: transparent;
-    font-size: 9pt;
-    padding: 1px 2px;
-    min-width: 0;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
+    word-break: break-word;
+    min-height: 1.2em;
   }
-  input::-webkit-outer-spin-button,
-  input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-  /* Lignes de saisie plus aérées en largeur */
-  .row { gap: 4px; }
-  .row input, .row select { font-size: 8.5pt; }
+  /* Lignes de saisie compactes */
+  .row { gap: 4px; align-items: start; }
   .row .col-label { font-size: 6.5pt; letter-spacing: 0; }
   .params-grid { gap: 4px; }
   .params-grid label { font-size: 7pt; }
