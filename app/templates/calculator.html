@@ -138,6 +138,16 @@
     <div class="results">
       <div id="verdict" class="verdict ok">Viabilité<span class="big" id="verdict-txt">—</span></div>
 
+      <div id="partage" class="section" style="display:none;text-align:center;border:1.5px dashed var(--violet)">
+        <strong style="font-size:.95rem">🎉 Votre modèle est viable — faites tourner !</strong>
+        <p class="muted" style="font-size:.83rem;margin:6px 0 12px">Vous connaissez une entrepreneuse qui devrait vérifier ses chiffres ? Partagez-lui Athena :</p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <a class="btn small" target="_blank" rel="noopener" href="https://wa.me/?text={{ ('Je viens de vérifier que mon business model est viable avec Athena 🙌 Un outil gratuit pensé pour les entrepreneuses : ' ~ site_url) | urlencode }}">💬 WhatsApp</a>
+          <a class="btn small" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url={{ site_url | urlencode }}">💼 LinkedIn</a>
+          <button class="btn ghost small" onclick="copierLien()">🔗 Copier le lien</button>
+        </div>
+      </div>
+
       <div class="section">
         <h3>📈 Indicateurs clés</h3>
         <div class="kpi"><span>Chiffre d'affaires annuel</span><span class="val" id="k-ca">—</span></div>
@@ -199,6 +209,11 @@
       </div>
       {% endif %}
     </div>
+  </div>
+
+  <!-- Visible uniquement à l'impression -->
+  <div class="print-footer">
+    Réalisé avec <strong>Athena</strong> — l'outil gratuit de viabilité économique pour entrepreneuses · {{ site_url | replace("https://", "") }}
   </div>
 </div>
 
@@ -483,8 +498,19 @@ function imprimerModele() {
     "Exporté le " + now.toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
   window.print();
 }
+
+function copierLien() {
+  navigator.clipboard.writeText("{{ site_url }}").then(() => {
+    const t = document.getElementById("toast");
+    t.textContent = "Lien copié ✓";
+    t.classList.add("show");
+    setTimeout(() => { t.classList.remove("show"); t.textContent = "Sauvegardé ✓"; }, 2000);
+  });
+}
 </script>
 <style>
+.print-footer { display: none; }
+
 @media print {
   /* ---- Masquer les éléments non imprimables ---- */
   .nav,
@@ -498,7 +524,19 @@ function imprimerModele() {
   .etp-explainer,
   .hint,
   .section .hint,
+  #partage,
   button { display: none !important; }
+
+  /* Badge Athena en pied de page PDF */
+  .print-footer {
+    display: block;
+    margin-top: 8mm;
+    padding-top: 3mm;
+    border-top: 1px solid #ccc;
+    text-align: center;
+    color: #6a2c91;
+    font-size: 9pt;
+  }
 
   /* ---- Mise en page print ---- */
   body { background: #fff; color: #000; font-size: 11pt; }

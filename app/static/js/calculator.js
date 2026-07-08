@@ -123,6 +123,10 @@ async function recalc() {
   verdict.className = "verdict " + (t.viable ? "ok" : "ko");
   document.getElementById("verdict-txt").textContent = t.viable ? "Viable ✓" : "Non viable ✕";
 
+  /* Bloc partage — visible uniquement quand le modèle est viable */
+  const partage = document.getElementById("partage");
+  if (partage) partage.style.display = t.viable ? "" : "none";
+
   /* KPIs */
   document.getElementById("k-ca").textContent  = eur(t.ca_total);
   document.getElementById("k-mb").textContent  = eur(t.marge_brute_total);
