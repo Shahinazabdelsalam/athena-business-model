@@ -69,6 +69,7 @@ function collect() {
       taux_taxe_salaires:             (parseFloat(document.getElementById("taux_taxe_salaires").value) || 0) / 100,
       heures_par_etp:                 parseFloat(document.getElementById("heures_par_etp").value) || 1582,
       dividendes_cibles:              parseFloat(document.getElementById("dividendes_cibles").value) || 0,
+      profil_statut:                  window.PROFIL_STATUT || null,
     },
     charges_externes: [...document.querySelectorAll("#charges .row")].map(el => ({
       description: val(el, ".c-desc"), frequence: val(el, ".c-freq"), montant_unitaire: num(el, ".c-mont"),
@@ -105,7 +106,19 @@ function collect() {
 /* ---------- Calcul & rendu ---------- */
 function schedule() { clearTimeout(timer); timer = setTimeout(recalc, 250); }
 
+/* Grise le taux de cotisations patronales quand la case n'est pas cochée :
+   il ne s'applique pas (ex. micro-entrepreneuse seule), autant le montrer. */
+function syncPatronalesUI() {
+  const on   = document.getElementById("cotisations_patronales").checked;
+  const taux = document.getElementById("taux_cotisations_patronales");
+  if (taux) {
+    taux.disabled = !on;
+    taux.style.opacity = on ? "" : ".45";
+  }
+}
+
 async function recalc() {
+  syncPatronalesUI();
   const data = collect();
   let r;
   try {
@@ -413,6 +426,8 @@ function load(data) {
   data = data || {};
   const p = data.parametres || {};
 
+  window.PROFIL_STATUT = p.profil_statut || null;   // profil déjà choisi ? (persisté avec le modèle)
+
   if (p.collecte_tva !== undefined)              document.getElementById("collecte_tva").checked = p.collecte_tva;
   if (p.cotisations_patronales !== undefined)    document.getElementById("cotisations_patronales").checked = p.cotisations_patronales;
   if (p.cotisation_ca_pct !== undefined)         document.getElementById("cotisation_ca_pct").value = p.cotisation_ca_pct * 100;
@@ -464,4 +479,20 @@ async function sauvegarder() {
 
 document.addEventListener("input",  (e) => { if (e.target.closest(".calc")) schedule(); });
 document.addEventListener("change", (e) => { if (e.target.closest(".calc")) schedule(); });
-window.addEventListener("DOMContentLoaded", () => { load(window.MODEL_DATA); recalc(); });
+
+/* Onboarding : le profil est la 1re chose à configurer. On ouvre l'assistant
+   automatiquement tant qu'aucun statut n'a été choisi et qu'il n'a pas déjà
+   été proposé sur cet appareil. */
+function maybeOnboard() {
+  if (window.PROFIL_STATUT) return;                 // profil déjà choisi (persisté)
+  let seen = false;
+  try { seen = !!localStorage.getItem("athena_profil_seen_" + (window.MODEL_ID || "decouverte")); } catch (e) {}
+  if (seen) return;                                 // déjà proposé sur cet appareil
+  if (typeof ouvrirWizard === "function") ouvrirWizard();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  load(window.MODEL_DATA);
+  recalc();
+  maybeOnboard();
+});

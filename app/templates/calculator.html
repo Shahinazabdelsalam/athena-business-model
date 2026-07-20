@@ -271,8 +271,8 @@
 
     <!-- Étape 3 : Salariés -->
     <div id="wz-step-3" class="wz-step">
-      <h2 class="wz-title">As-tu des salariées ?</h2>
-      <p class="wz-sub">Active les cotisations patronales (~42 %) et la taxe sur les salaires si non-TVA.</p>
+      <h2 class="wz-title">Emploies-tu des salariées ?</h2>
+      <p class="wz-sub">Compte uniquement les personnes que tu emploies — <b>pas toi-même</b>. En micro, ta propre protection sociale est déjà couverte par la cotisation sur le CA.</p>
       <div class="wz-options wz-options-2">
         <button class="wz-opt" onclick="wz_salaries(false)">
           <span class="wz-icon">🙋‍♀️</span>
@@ -280,7 +280,7 @@
         </button>
         <button class="wz-opt" onclick="wz_salaries(true)">
           <span class="wz-icon">👥</span>
-          <span><strong>Oui — J'ai des salariées</strong><br><small>Cotisations patronales activées</small></span>
+          <span><strong>Oui — J'emploie des salariées</strong><br><small>Cotisations patronales sur leurs salaires</small></span>
         </button>
       </div>
     </div>
@@ -392,8 +392,13 @@
 </style>
 
 <script>
-/* ===== WIZARD ===== */
+/* ===== WIZARD / ONBOARDING PROFIL ===== */
 const wz = { statut: null, tva: null, salaries: null };
+
+/* Clé locale : « ce profil a déjà été proposé sur cet appareil » */
+function profilSeenKey() {
+  return "athena_profil_seen_" + (window.MODEL_ID || "decouverte");
+}
 
 function ouvrirWizard() {
   wz.statut = null; wz.tva = null; wz.salaries = null;
@@ -402,6 +407,7 @@ function ouvrirWizard() {
 }
 function fermerWizard() {
   document.getElementById("wizard-overlay").classList.remove("open");
+  try { localStorage.setItem(profilSeenKey(), "1"); } catch (e) {}
 }
 function wz_closeOnOverlay(e) {
   if (e.target === document.getElementById("wizard-overlay")) fermerWizard();
@@ -416,17 +422,25 @@ function wz_goto(n) {
 
 function wz_statut(val) {
   wz.statut = val;
-  if (val === 'societe') {
-    wz.tva = true;          // Société → TVA par défaut
-    wz_goto(3);
+  if (val === 'portage') {
+    // Portage / CAE : la société de portage gère la TVA et les charges.
+    wz.tva = false; wz.salaries = false;
+    wz_buildSummary(); wz_goto(4);
   } else {
-    wz_goto(2);
+    wz_goto(2);   // Micro & Société passent par la question TVA
   }
 }
 
 function wz_tva(val) {
   wz.tva = val;
-  wz_goto(3);
+  if (wz.statut === 'societe') {
+    // En société, la dirigeante est rémunérée avec charges (assimilée salariée) :
+    // les cotisations patronales s'appliquent d'office, pas besoin de la question « salariées ».
+    wz.salaries = true;
+    wz_buildSummary(); wz_goto(4);
+  } else {
+    wz_goto(3);   // Micro : on demande s'il y a des salariées
+  }
 }
 
 function wz_salaries(val) {
@@ -439,29 +453,46 @@ function wz_buildSummary() {
   const labels = {
     micro_bnc: "Micro — Services BNC/libéral",
     micro_bic: "Micro — Commerce/Artisanat/BIC",
-    societe:   "Société (SARL, SAS…)",
+    societe:   "Société (SARL, SAS, EURL…)",
     portage:   "Portage salarial / CAE",
   };
-  const params = wz_params();
-  document.getElementById("wz-summary").innerHTML = `
-    <div>📌 Statut : <b>${labels[wz.statut]}</b></div>
-    <div>🧾 TVA : <b>${wz.tva ? "Oui, collectée" : "Non (franchise de base)"}</b></div>
-    <div>👥 Salariées : <b>${wz.salaries ? "Oui" : "Non"}</b></div>
-    <hr style="border:none;border-top:1px solid var(--border,#eee);margin:8px 0">
-    <div>↳ Cotisation sur CA : <b>${params.cotisation_ca_pct} %</b></div>
-    <div>↳ Cotisations patronales : <b>${params.cotisations_patronales ? "Activées" : "Désactivées"}</b></div>
-    <div>↳ Taxe sur les salaires : <b>${params.taux_taxe_salaires} %</b></div>
-    <div>↳ Collecte TVA : <b>${params.collecte_tva ? "Oui" : "Non"}</b></div>`;
+  const p = wz_params();
+  const estMicro = wz.statut === 'micro_bnc' || wz.statut === 'micro_bic';
+  const lignes = [
+    `<div>📌 Statut : <b>${labels[wz.statut]}</b></div>`,
+    `<div>🧾 TVA : <b>${p.collecte_tva ? "Oui, collectée" : "Non (franchise de base)"}</b></div>`,
+  ];
+  if (estMicro) {
+    lignes.push(`<div>👥 Salariées : <b>${wz.salaries ? "Oui" : "Non (tu travailles seule)"}</b></div>`);
+  }
+  lignes.push(
+    `<hr style="border:none;border-top:1px solid var(--border,#eee);margin:8px 0">`,
+    `<div>↳ Cotisation sur le CA : <b>${p.cotisation_ca_pct} %</b></div>`,
+    `<div>↳ Cotisations patronales : <b>${p.cotisations_patronales ? "Oui (" + p.taux_cotisations_patronales + " %)" : "Non — sans objet pour toi"}</b></div>`,
+    `<div>↳ Taxe sur les salaires : <b>${p.taux_taxe_salaires} %</b></div>`,
+  );
+  document.getElementById("wz-summary").innerHTML = lignes.join("");
 }
 
 function wz_params() {
   const cotisation_ca = { micro_bnc: 22.2, micro_bic: 12.3, societe: 0, portage: 10 }[wz.statut] ?? 0;
-  const cotisations_patronales = wz.salaries === true;
-  // Taxe sur salaires : s'applique uniquement si non-TVA ET salariés
-  const taux_taxe_salaires = (!wz.tva && wz.salaries) ? 3 : 0;
+
+  // Cotisations patronales (~42 %) : elles ne portent que sur des rémunérations soumises à charges.
+  //  • Société : la dirigeante est assimilée salariée → sa rémunération les supporte (toujours).
+  //  • Micro (BNC/BIC) : la cotisation sur le CA couvre déjà TA protection sociale ;
+  //    des charges patronales n'existent que si TU EMPLOIES des salariées.
+  //  • Portage / CAE : les frais de gestion couvrent déjà tout → aucune charge patronale ici.
+  let cotisations_patronales;
+  if (wz.statut === 'societe')      cotisations_patronales = true;
+  else if (wz.statut === 'portage') cotisations_patronales = false;
+  else                              cotisations_patronales = wz.salaries === true;
+
+  // Taxe sur les salaires : due par l'employeur non assujetti à la TVA qui verse des rémunérations chargées.
+  const taux_taxe_salaires = (!wz.tva && cotisations_patronales) ? 3 : 0;
+
   return {
     cotisation_ca_pct: cotisation_ca,
-    collecte_tva: wz.tva,
+    collecte_tva: !!wz.tva,
     cotisations_patronales,
     taux_cotisations_patronales: 42,   // valeur par défaut
     taux_taxe_salaires,
@@ -475,8 +506,10 @@ function wz_appliquer() {
   document.getElementById("cotisations_patronales").checked    = p.cotisations_patronales;
   document.getElementById("taux_cotisations_patronales").value = p.taux_cotisations_patronales;
   document.getElementById("taux_taxe_salaires").value          = p.taux_taxe_salaires;
-  fermerWizard();
-  schedule();   // recalcul immédiat
+  window.PROFIL_STATUT = wz.statut;                 // mémorisé & sauvegardé avec le modèle
+  if (typeof syncPatronalesUI === "function") syncPatronalesUI();
+  fermerWizard();                                   // marque aussi le profil comme « vu »
+  schedule();                                       // recalcul immédiat
   // Petit toast de confirmation
   const t = document.getElementById("toast");
   t.textContent = "Profil appliqué ✓";
