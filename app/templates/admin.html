@@ -8,7 +8,10 @@
       <h1 style="margin:0">🛠️ Administration</h1>
       <p class="muted" style="margin:4px 0 0">Vue d'ensemble des utilisatrices et des modèles.</p>
     </div>
-    <a class="btn ghost small" href="/tableau-de-bord">← Mon tableau de bord</a>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a class="btn small" href="/admin/export.csv">⬇️ Exporter en CSV</a>
+      <a class="btn ghost small" href="/tableau-de-bord">← Mon tableau de bord</a>
+    </div>
   </div>
 
   <!-- Statistiques globales -->
@@ -24,6 +27,12 @@
     <div class="card" style="padding:20px;text-align:center">
       <div style="font-size:2rem;font-weight:800;color:var(--or)">{{ total_models }}</div>
       <div class="muted" style="font-size:.85rem;margin-top:4px">Modèles créés</div>
+    </div>
+    <div class="card" style="padding:20px;text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:var(--violet)">
+        {{ users | selectattr('accepte_communications') | list | length }}
+      </div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Contacts démarchables</div>
     </div>
   </div>
 

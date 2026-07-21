@@ -6,6 +6,8 @@ entrepreneuses. Chaque utilisatrice crée un compte, construit un ou plusieurs
 modèles économiques et visualise leur viabilité (coûts fixes, offres,
 marge, seuil de rentabilité, compte de résultat).
 """
+import csv
+import io
 import json
 import logging
 import os
@@ -13,6 +15,7 @@ import re
 import time
 import urllib.parse
 from collections import defaultdict, deque
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -223,6 +226,24 @@ def _migrate():
                     conn.commit()
                     logger.info("Migration: added %s column to users.", col)
 
+            # RGPD : consentement marketing + provenance de l'inscription.
+            is_pg = engine.dialect.name == "postgresql"
+            for col, ddl_pg, ddl_lite in (
+                ("accepte_communications",
+                 "BOOLEAN NOT NULL DEFAULT FALSE", "BOOLEAN NOT NULL DEFAULT 0"),
+                ("consentement_at", "TIMESTAMP", "TIMESTAMP"),
+                ("source", "VARCHAR(100)", "VARCHAR(100)"),
+            ):
+                if col not in existing:
+                    if is_pg:
+                        conn.execute(text(
+                            f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {ddl_pg}"
+                        ))
+                    else:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl_lite}"))
+                    conn.commit()
+                    logger.info("Migration: added %s column to users.", col)
+
             if "password_hash" in existing:
                 # Rend la colonne nullable pour les comptes Google (si ce n'est pas déjà le cas).
                 # Postgres uniquement — SQLite ne supporte pas ALTER COLUMN.
@@ -275,6 +296,32 @@ def _set_session_cookie(resp, user_id: int, request: Request) -> None:
     )
 
 
+SOURCE_COOKIE = "athena_src"
+# Le consentement coché sur /inscription doit survivre à l'aller-retour Google.
+OPTIN_COOKIE = "athena_optin"
+
+
+@app.middleware("http")
+async def _capture_source(request: Request, call_next):
+    """
+    Mémorise la provenance (?from=newsletter-incubateur) dans un cookie, pour
+    l'attribuer à l'inscription même si la visiteuse navigue avant de créer
+    son compte. Le premier `from` rencontré gagne.
+    """
+    src = (request.query_params.get("from") or "").strip()[:100]
+    response = await call_next(request)
+    if src and not request.cookies.get(SOURCE_COOKIE):
+        response.set_cookie(
+            SOURCE_COOKIE, src, max_age=60 * 60 * 24 * 30,
+            httponly=True, samesite="lax",
+        )
+    return response
+
+
+def _signup_source(request: Request) -> str | None:
+    return request.cookies.get(SOURCE_COOKIE) or None
+
+
 # Limiteur de débit en mémoire (par process) pour l'API publique de calcul.
 _calc_hits: dict[str, deque] = defaultdict(deque)
 
@@ -325,6 +372,7 @@ def register(
     email: str = Form(""),
     nom: str = Form(""),
     password: str = Form(""),
+    accepte_communications: str = Form(""),
     db: Session = Depends(get_db),
 ):
     email = email.strip().lower()
@@ -346,11 +394,15 @@ def register(
             {"request": request, "error": "Le mot de passe doit faire au moins 6 caractères."},
             status_code=400,
         )
+    opt_in = accepte_communications in ("1", "true", "on", "yes")
     user = User(
         email=email,
         nom=nom.strip(),
         password_hash=auth.hash_password(password),
         is_premium=False,
+        accepte_communications=opt_in,
+        consentement_at=datetime.utcnow() if opt_in else None,
+        source=_signup_source(request),
     )
     db.add(user)
     db.commit()
@@ -421,7 +473,10 @@ def google_login(request: Request):
         "scope":         "openid email profile",
         "access_type":   "online",
     })
-    return RedirectResponse(f"{GOOGLE_AUTH_URL}?{params}", status_code=302)
+    resp = RedirectResponse(f"{GOOGLE_AUTH_URL}?{params}", status_code=302)
+    if request.query_params.get("consent") == "1":
+        resp.set_cookie(OPTIN_COOKIE, "1", max_age=600, httponly=True, samesite="lax")
+    return resp
 
 
 @app.get("/auth/google/callback", name="google_callback")
@@ -473,13 +528,20 @@ async def google_callback(
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        user = User(email=email, nom=nom, password_hash="__google_oauth__", is_premium=False)
+        opt_in = request.cookies.get(OPTIN_COOKIE) == "1"
+        user = User(
+            email=email, nom=nom, password_hash="__google_oauth__", is_premium=False,
+            accepte_communications=opt_in,
+            consentement_at=datetime.utcnow() if opt_in else None,
+            source=_signup_source(request),
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
 
     resp = RedirectResponse(url="/tableau-de-bord", status_code=303)
     _set_session_cookie(resp, user.id, request)
+    resp.delete_cookie(OPTIN_COOKIE)
     return resp
 
 
@@ -697,6 +759,39 @@ def admin_page(request: Request, db: Session = Depends(get_db)):
         "users":        users,
         "total_models": total_models,
     })
+
+
+@app.get("/admin/export.csv")
+def admin_export_csv(request: Request, db: Session = Depends(get_db)):
+    """
+    Export de la base utilisatrices (CSV, séparateur ';' pour Excel FR).
+    `consentement` distingue qui peut légalement recevoir des emails commerciaux.
+    """
+    require_admin(request, db)
+    users = db.query(User).order_by(User.created_at.desc()).all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["email", "nom", "inscription", "premium",
+                "consentement_marketing", "date_consentement", "source", "nb_modeles"])
+    for u in users:
+        w.writerow([
+            u.email,
+            u.nom or "",
+            u.created_at.strftime("%Y-%m-%d") if u.created_at else "",
+            "oui" if u.is_premium else "non",
+            "oui" if u.accepte_communications else "non",
+            u.consentement_at.strftime("%Y-%m-%d") if u.consentement_at else "",
+            u.source or "",
+            len(u.models),
+        ])
+
+    # BOM UTF-8 : sans lui, Excel casse les accents.
+    return Response(
+        content="﻿" + buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="athena-utilisatrices.csv"'},
+    )
 
 
 @app.post("/admin/toggle-premium/{user_id}")

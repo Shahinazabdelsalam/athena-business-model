@@ -19,6 +19,13 @@ class User(Base):
     stripe_subscription_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # RGPD : consentement explicite pour les communications commerciales.
+    # `consentement_at` sert de preuve (date de recueil) en cas de contrôle.
+    accepte_communications = Column(Boolean, nullable=False, default=False, server_default="false")
+    consentement_at = Column(DateTime, nullable=True)
+    # Provenance de l'inscription (ex. "newsletter-incubateur") via ?from=
+    source = Column(String(100), nullable=True)
+
     models = relationship(
         "BusinessModel", back_populates="owner", cascade="all, delete-orphan"
     )
