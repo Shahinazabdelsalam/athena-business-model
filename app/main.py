@@ -379,6 +379,15 @@ def legal_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
+@app.get("/cgv", response_class=HTMLResponse)
+def cgv_page(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse("cgv.html", {
+        "request": request,
+        "user": get_current_user(request, db),
+        "maj": "21 juillet 2026",
+    })
+
+
 @app.get("/inscription", response_class=HTMLResponse)
 def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request, "error": None})
@@ -1024,6 +1033,7 @@ def sitemap():
         ("/connexion", "monthly", "0.3"),
         ("/confidentialite", "yearly", "0.2"),
         ("/mentions-legales", "yearly", "0.2"),
+        ("/cgv", "yearly", "0.2"),
     ]
     urls = "".join(
         f"<url><loc>{SITE_URL}{path}</loc><changefreq>{freq}</changefreq><priority>{prio}</priority></url>"

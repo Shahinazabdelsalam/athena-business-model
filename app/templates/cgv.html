@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Conditions générales de vente — Athena{% endblock %}
+{% block description %}Conditions générales de vente d'Athena Business Model : abonnement Athena Pro, essai gratuit de 30 jours, résiliation, rétractation et garanties.{% endblock %}
+{% block content %}
+<div class="container" style="padding-top:32px;padding-bottom:60px;max-width:780px">
+
+  <h1 style="margin:0 0 6px">Conditions générales de vente</h1>
+  <p class="muted" style="margin:0 0 28px">Dernière mise à jour : {{ maj }}</p>
+
+  <div class="card" style="padding:16px 20px;margin-bottom:28px;border-left:4px solid var(--violet)">
+    <strong>En résumé :</strong> le calculateur est gratuit (2 modèles). Athena Pro coûte
+    <b>4,99 €/mois</b> après <b>30 jours d'essai gratuit</b>, <b>sans engagement</b>. Vous pouvez
+    résilier en quelques clics depuis votre tableau de bord, à tout moment. Si vous résiliez pendant
+    l'essai, <b>vous ne payez rien</b>.
+  </div>
+
+  <h2>Article 1 — Objet et acceptation</h2>
+  <p>Les présentes conditions générales de vente (« CGV ») régissent la vente de l'abonnement
+    « Athena Pro » proposé sur {{ site_url }} par la société EntangleEQ (le « Vendeur »).
+    Toute souscription implique leur acceptation pleine et entière. Elles priment sur tout autre document.</p>
+
+  <h2>Article 2 — Identification du vendeur</h2>
+  <p><b>EntangleEQ</b>, SASU au capital de 1 000 €, siège social 72 C1, 17 rue de Navarre,
+    77700 Serris (France), RCS Meaux 105 341 374.<br>
+    Contact : <a href="mailto:{{ admin_email }}">{{ admin_email }}</a> — voir nos
+    <a href="/mentions-legales">mentions légales</a>.</p>
+
+  <h2>Article 3 — Description des services</h2>
+  <p>Athena Business Model est un outil en ligne d'analyse de viabilité économique, proposé en deux formules :</p>
+  <ul>
+    <li><b>Formule gratuite</b> — calculateur complet, jusqu'à <b>2 modèles</b> enregistrés, export PDF.</li>
+    <li><b>Athena Pro</b> — modèles illimités, projection sur 3 ans, comparaison de scénarios,
+      trésorerie mensuelle, impôt sur les sociétés et analyse CAC/LTV.</li>
+  </ul>
+  <p>Le Vendeur peut faire évoluer les fonctionnalités afin d'améliorer le service, sans réduire
+    substantiellement les prestations souscrites.</p>
+
+  <h2>Article 4 — Prix</h2>
+  <p>L'abonnement Athena Pro est de <b>4,99 € par mois, toutes taxes comprises</b>.<br>
+    <span class="muted">[À AJUSTER selon votre régime : si vous relevez de la franchise en base,
+      mentionner « TVA non applicable, art. 293 B du CGI ».]</span></p>
+  <p>Les prix peuvent être modifiés à tout moment. Toute modification est notifiée par email au moins
+    <b>30 jours avant</b> son entrée en vigueur ; l'abonnée peut alors résilier sans frais avant cette date.</p>
+
+  <h2>Article 5 — Essai gratuit de 30 jours</h2>
+  <p>Toute nouvelle souscription ouvre droit à une période d'essai gratuite de <b>30 jours</b>.
+    Aucun montant n'est prélevé pendant cette période. Un moyen de paiement valide est enregistré
+    lors de la souscription mais n'est débité qu'<b>à l'issue de l'essai</b>.</p>
+  <p>Si l'abonnée résilie avant la fin des 30 jours, <b>aucun paiement n'est dû</b>. À défaut de
+    résiliation, l'abonnement se poursuit automatiquement au tarif en vigueur.</p>
+
+  <h2>Article 6 — Souscription et paiement</h2>
+  <p>La souscription s'effectue en ligne depuis un compte utilisateur. Les paiements sont traités par
+    notre prestataire <b>Stripe</b>. Les coordonnées bancaires sont saisies directement chez Stripe et
+    ne sont <b>jamais</b> stockées par EntangleEQ.</p>
+  <p>Le paiement s'effectue par prélèvement mensuel automatique sur le moyen de paiement enregistré.
+    Les factures sont accessibles à tout moment depuis l'espace « Gérer mon abonnement ».</p>
+  <p>En cas d'échec de paiement, l'accès aux fonctions Pro peut être suspendu après relance restée
+    sans effet ; les données de l'abonnée sont conservées et l'accès à la formule gratuite est maintenu.</p>
+
+  <h2>Article 7 — Durée, reconduction et résiliation</h2>
+  <p>L'abonnement est conclu pour une durée d'<b>un mois</b>, reconduit tacitement par périodes
+    successives d'un mois, <b>sans engagement de durée</b>.</p>
+  <p><b>Résiliation en ligne</b> — conformément à l'article L.215-1-1 du Code de la consommation,
+    l'abonnée peut résilier directement en ligne, en quelques clics : tableau de bord →
+    <b>« Gérer mon abonnement »</b> → <b>« Annuler l'abonnement »</b>.</p>
+  <p>La résiliation prend effet <b>à la fin de la période en cours</b> : l'accès aux fonctions Pro est
+    maintenu jusqu'à cette date, sans nouveau prélèvement. Les modèles créés restent accessibles dans
+    la limite de la formule gratuite.</p>
+
+  <h2>Article 8 — Droit de rétractation</h2>
+  <p>Conformément à l'article L.221-18 du Code de la consommation, le consommateur dispose d'un délai
+    de <b>14 jours</b> à compter de la souscription pour exercer son droit de rétractation, sans
+    motif ni pénalité. En pratique, l'essai gratuit de 30 jours est plus favorable : résilier pendant
+    l'essai n'entraîne aucun paiement.</p>
+  <p>Pour se rétracter, il suffit d'écrire à <a href="mailto:{{ admin_email }}">{{ admin_email }}</a>
+    ou d'utiliser le formulaire ci-dessous. Le remboursement intervient sous 14 jours par le même
+    moyen de paiement.</p>
+  <div class="card" style="padding:14px 18px;font-size:.9rem;background:var(--fond)">
+    <b>Formulaire type de rétractation</b><br>
+    <span class="muted">À l'attention d'EntangleEQ, 72 C1, 17 rue de Navarre, 77700 Serris —
+      {{ admin_email }}<br>
+      Je vous notifie par la présente ma rétractation du contrat portant sur l'abonnement Athena Pro
+      commandé le [date]. Nom : [        ] — Adresse : [        ] — Date : [        ].</span>
+  </div>
+
+  <h2>Article 9 — Nature du service et responsabilité</h2>
+  <p>Athena Business Model est un <b>outil d'aide à la décision</b>. Les résultats (marge, seuil de
+    rentabilité, projections, scénarios) découlent des hypothèses saisies par l'utilisatrice et ne
+    constituent <b>ni un conseil comptable, ni juridique, ni fiscal</b>. Ils ne remplacent pas
+    l'accompagnement d'un professionnel du chiffre.</p>
+  <p>Le Vendeur ne garantit aucun résultat économique et ne saurait être tenu responsable des
+    décisions prises sur la base de ces estimations. Sa responsabilité ne saurait excéder les sommes
+    effectivement versées au titre des 12 derniers mois.</p>
+
+  <h2>Article 10 — Disponibilité</h2>
+  <p>Le Vendeur s'efforce d'assurer l'accès au service 24h/24, sans obligation de résultat. L'accès
+    peut être interrompu pour maintenance ou en cas de force majeure. Une indisponibilité prolongée
+    et imputable au Vendeur ouvre droit, sur demande, à un remboursement au prorata.</p>
+
+  <h2>Article 11 — Données personnelles et propriété</h2>
+  <p>Le traitement des données est décrit dans la <a href="/confidentialite">politique de
+    confidentialité</a>. Les modèles économiques créés demeurent la <b>propriété exclusive</b> de
+    l'utilisatrice ; EntangleEQ ne les exploite pas à des fins commerciales et ne les communique
+    à aucun tiers.</p>
+
+  <h2>Article 12 — Médiation et droit applicable</h2>
+  <p>En cas de litige, l'abonnée s'adresse d'abord au Vendeur afin de rechercher une solution amiable.
+    À défaut, tout consommateur peut recourir gratuitement à un médiateur de la consommation
+    (art. L.612-1 du Code de la consommation).<br>
+    <span class="muted">[À COMPLÉTER : nom et coordonnées du médiateur retenu.]</span></p>
+  <p>Le consommateur peut également utiliser la plateforme européenne de règlement en ligne des
+    litiges. Les présentes CGV sont soumises au <b>droit français</b>.</p>
+
+  <p class="muted" style="margin-top:32px;font-size:.85rem">
+    Athena Business Model — un outil au service de l'autonomie économique des femmes. ♀
+  </p>
+</div>
+{% endblock %}
