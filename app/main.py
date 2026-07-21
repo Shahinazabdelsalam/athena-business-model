@@ -14,8 +14,8 @@ import os
 import re
 import time
 import urllib.parse
-from collections import defaultdict, deque
-from datetime import datetime
+from collections import Counter, defaultdict, deque
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -359,6 +359,15 @@ def _calc_rate_limited(ip: str) -> bool:
 def index(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     return templates.TemplateResponse("index.html", {"request": request, "user": user})
+
+
+@app.get("/confidentialite", response_class=HTMLResponse)
+def privacy_page(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse("confidentialite.html", {
+        "request": request,
+        "user": get_current_user(request, db),
+        "maj": "21 juillet 2026",
+    })
 
 
 @app.get("/inscription", response_class=HTMLResponse)
@@ -758,7 +767,63 @@ def admin_page(request: Request, db: Session = Depends(get_db)):
         "user":         user,
         "users":        users,
         "total_models": total_models,
+        "stats":        _admin_stats(db),
     })
+
+
+STATUT_LABELS = {
+    "micro_bnc": "Micro — Services BNC / libéral",
+    "micro_bic": "Micro — Commerce / Artisanat",
+    "societe":   "Société (SAS, SARL…)",
+    "portage":   "Portage salarial",
+}
+
+
+def _admin_stats(db: Session) -> dict:
+    """
+    Statistiques agrégées, calculées côté serveur — aucun cookie, aucun
+    traceur. On relit chaque modèle pour savoir s'il est viable.
+    """
+    now = datetime.utcnow()
+    users = db.query(User).all()
+    models = db.query(BusinessModel).all()
+
+    def inscrites_depuis(jours: int) -> int:
+        seuil = now - timedelta(days=jours)
+        return sum(1 for u in users if u.created_at and u.created_at >= seuil)
+
+    statuts: Counter = Counter()
+    viables = non_viables = incomplets = 0
+    for m in models:
+        try:
+            data = json.loads(m.data or "{}")
+        except Exception:
+            incomplets += 1
+            continue
+        statut = (data.get("parametres") or {}).get("profil_statut")
+        statuts[STATUT_LABELS.get(statut, "Non renseigné")] += 1
+        try:
+            totaux = calculer(data)["totaux"]
+            if totaux["ca_total"] <= 0:
+                incomplets += 1          # modèle à peine commencé
+            elif totaux["viable"]:
+                viables += 1
+            else:
+                non_viables += 1
+        except Exception:
+            incomplets += 1
+
+    premium = sum(1 for u in users if u.is_premium)
+    return {
+        "inscrites_7j":   inscrites_depuis(7),
+        "inscrites_30j":  inscrites_depuis(30),
+        "taux_pro":       round(100 * premium / len(users), 1) if users else 0.0,
+        "viables":        viables,
+        "non_viables":    non_viables,
+        "incomplets":     incomplets,
+        "statuts":        statuts.most_common(),
+        "sources":        Counter(u.source or "Accès direct" for u in users).most_common(),
+    }
 
 
 @app.get("/admin/export.csv")
@@ -948,6 +1013,7 @@ def sitemap():
         ("/upgrade", "monthly", "0.8"),
         ("/inscription", "monthly", "0.7"),
         ("/connexion", "monthly", "0.3"),
+        ("/confidentialite", "yearly", "0.2"),
     ]
     urls = "".join(
         f"<url><loc>{SITE_URL}{path}</loc><changefreq>{freq}</changefreq><priority>{prio}</priority></url>"

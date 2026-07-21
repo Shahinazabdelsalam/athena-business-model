@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Politique de confidentialité — Athena{% endblock %}
+{% block description %}Comment Athena Business Model collecte, utilise et protège vos données personnelles, et comment exercer vos droits.{% endblock %}
+{% block content %}
+<div class="container" style="padding-top:32px;padding-bottom:60px;max-width:780px">
+
+  <h1 style="margin:0 0 6px">Politique de confidentialité</h1>
+  <p class="muted" style="margin:0 0 28px">Dernière mise à jour : {{ maj }}</p>
+
+  <div class="card" style="padding:16px 20px;margin-bottom:28px;border-left:4px solid var(--violet)">
+    <strong>En résumé :</strong> nous collectons le minimum — votre email et les modèles que vous créez.
+    Vos modèles sont <b>privés</b>. Nous n'utilisons <b>aucun traceur publicitaire</b> et ne vendons
+    <b>jamais</b> vos données. Vous ne recevez d'emails commerciaux que si vous l'avez explicitement accepté.
+  </div>
+
+  <h2>1. Qui est responsable de vos données ?</h2>
+  <p>Le service <b>Athena Business Model</b> ({{ site_url }}) est édité par <b>EntangleEQ</b>.<br>
+    <span class="muted">[À COMPLÉTER : forme juridique, numéro SIREN et adresse postale du siège.]</span><br>
+    Contact : <a href="mailto:{{ admin_email }}">{{ admin_email }}</a></p>
+
+  <h2>2. Quelles données collectons-nous ?</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:.92rem;margin-bottom:8px">
+    <tr style="border-bottom:2px solid var(--bord)">
+      <th style="text-align:left;padding:8px 6px">Donnée</th>
+      <th style="text-align:left;padding:8px 6px">Pourquoi</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:8px 6px">Adresse email</td><td style="padding:8px 6px">Identifier votre compte, vous connecter</td></tr>
+    <tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:8px 6px">Prénom / nom (facultatif)</td><td style="padding:8px 6px">Personnaliser l'interface</td></tr>
+    <tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:8px 6px">Mot de passe</td><td style="padding:8px 6px">Stocké <b>haché</b> (PBKDF2) — jamais en clair, illisible par nous</td></tr>
+    <tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:8px 6px">Contenu de vos modèles</td><td style="padding:8px 6px">Vous restituer votre travail. <b>Privé</b> : visible de vous seule</td></tr>
+    <tr style="border-bottom:1px solid var(--bord)">
+      <td style="padding:8px 6px">Données d'abonnement</td><td style="padding:8px 6px">Gérer Athena Pro. <b>Aucune donnée bancaire</b> ne transite par nos serveurs</td></tr>
+    <tr>
+      <td style="padding:8px 6px">Date d'inscription, provenance</td><td style="padding:8px 6px">Statistiques agrégées d'usage du service</td></tr>
+  </table>
+
+  <h2>3. Sur quelle base légale ?</h2>
+  <ul>
+    <li><b>Exécution du contrat</b> — compte, modèles, abonnement : nécessaires pour vous fournir le service.</li>
+    <li><b>Consentement</b> — emails d'information et offres, <b>uniquement</b> si vous avez coché la case
+      prévue à l'inscription. Vous pouvez le retirer à tout moment.</li>
+    <li><b>Obligation légale</b> — conservation des factures (comptabilité).</li>
+    <li><b>Intérêt légitime</b> — statistiques agrégées et anonymes pour améliorer l'outil.</li>
+  </ul>
+
+  <h2>4. Qui d'autre y a accès ?</h2>
+  <p>Nous ne vendons ni ne louons vos données. Nous faisons appel à des prestataires techniques,
+    strictement pour faire fonctionner le service :</p>
+  <ul>
+    <li><b>Railway</b> — hébergement de l'application et de la base de données.</li>
+    <li><b>Stripe</b> — traitement des paiements. Vos coordonnées bancaires sont saisies chez Stripe
+      et ne sont <b>jamais</b> stockées par Athena.</li>
+    <li><b>Google</b> — uniquement si vous choisissez « Continuer avec Google » pour vous connecter.</li>
+  </ul>
+
+  <h2>5. Combien de temps conservons-nous vos données ?</h2>
+  <ul>
+    <li><b>Compte et modèles</b> : tant que votre compte existe. Supprimés sur demande.</li>
+    <li><b>Consentement marketing</b> : jusqu'à son retrait, puis 3 ans à titre de preuve.</li>
+    <li><b>Factures</b> : 10 ans (obligation comptable).</li>
+  </ul>
+
+  <h2>6. Cookies</h2>
+  <p>Athena n'utilise <b>aucun cookie publicitaire, ni Google Analytics, ni pixel de réseau social</b>.
+    Seuls des cookies strictement nécessaires sont déposés — ils ne requièrent pas de consentement :</p>
+  <ul>
+    <li><code>session</code> — vous garde connectée. Supprimé à la déconnexion.</li>
+    <li><code>athena_optin</code> — mémorise 10 minutes votre choix de consentement lors d'une inscription via Google.</li>
+    <li><code>athena_src</code> — retient le lien par lequel vous êtes arrivée, si vous venez d'une campagne.</li>
+  </ul>
+
+  <h2>7. Vos droits</h2>
+  <p>Vous disposez d'un droit d'accès, de rectification, d'effacement, de portabilité, d'opposition,
+    et du droit de retirer votre consentement à tout moment.</p>
+  <p>Pour les exercer, écrivez à <a href="mailto:{{ admin_email }}">{{ admin_email }}</a>. Nous répondons
+    sous 30 jours. Vous pouvez aussi vous désabonner en un clic depuis le lien présent dans chacun de nos emails.</p>
+  <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la
+    <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL</a>.</p>
+
+  <h2>8. Sécurité</h2>
+  <p>Les échanges sont chiffrés (HTTPS), les mots de passe sont hachés (PBKDF2, 260 000 itérations)
+    et les sessions signées cryptographiquement. Vos modèles ne sont accessibles qu'avec votre compte.</p>
+
+  <p class="muted" style="margin-top:32px;font-size:.85rem">
+    Athena Business Model — un outil au service de l'autonomie économique des femmes. ♀
+  </p>
+</div>
+{% endblock %}

@@ -36,6 +36,62 @@
     </div>
   </div>
 
+  <!-- Acquisition -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px">
+    <div class="card" style="padding:18px;text-align:center">
+      <div style="font-size:1.7rem;font-weight:800">{{ stats.inscrites_7j }}</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Inscrites (7 derniers jours)</div>
+    </div>
+    <div class="card" style="padding:18px;text-align:center">
+      <div style="font-size:1.7rem;font-weight:800">{{ stats.inscrites_30j }}</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Inscrites (30 derniers jours)</div>
+    </div>
+    <div class="card" style="padding:18px;text-align:center">
+      <div style="font-size:1.7rem;font-weight:800;color:var(--vert)">{{ stats.taux_pro }} %</div>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">Taux de conversion Pro</div>
+    </div>
+  </div>
+
+  <!-- Ce que disent les modèles -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px">
+    <div class="card" style="padding:20px">
+      <strong style="font-size:.95rem">📊 Viabilité des modèles</strong>
+      <p class="muted" style="font-size:.8rem;margin:2px 0 12px">Le vrai signal produit : qui a besoin d'aide.</p>
+      <div style="display:flex;justify-content:space-between;padding:5px 0">
+        <span>✅ Viables</span><b>{{ stats.viables }}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0">
+        <span style="color:var(--rouge)">❌ Non viables</span><b style="color:var(--rouge)">{{ stats.non_viables }}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0" class="muted">
+        <span>⏳ Incomplets</span><b>{{ stats.incomplets }}</b></div>
+      {% if stats.non_viables %}
+      <p class="muted" style="font-size:.8rem;margin:12px 0 0;border-top:1px solid var(--bord);padding-top:10px">
+        💡 {{ stats.non_viables }} utilisatrice{{ 's' if stats.non_viables > 1 }} découvre{{ 'nt' if stats.non_viables > 1 }}
+        que son modèle ne tient pas — la cible naturelle pour un accompagnement.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="card" style="padding:20px">
+      <strong style="font-size:.95rem">⚖️ Statuts juridiques</strong>
+      <p class="muted" style="font-size:.8rem;margin:2px 0 12px">Pour adapter ton discours et tes contenus.</p>
+      {% for label, n in stats.statuts %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span>{{ label }}</span><b>{{ n }}</b></div>
+      {% else %}
+      <p class="muted" style="font-size:.85rem">Aucun modèle pour l'instant.</p>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="padding:20px">
+      <strong style="font-size:.95rem">🔗 Provenance des inscriptions</strong>
+      <p class="muted" style="font-size:.8rem;margin:2px 0 12px">Ajoute <code>?from=nom-du-canal</code> à un lien pour tracer une campagne.</p>
+      {% for label, n in stats.sources %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span>{{ label }}</span><b>{{ n }}</b></div>
+      {% else %}
+      <p class="muted" style="font-size:.85rem">Aucune inscription pour l'instant.</p>
+      {% endfor %}
+    </div>
+  </div>
+
   <!-- Table utilisatrices -->
   <div class="card" style="padding:0;overflow:hidden">
     <table style="width:100%;border-collapse:collapse;font-size:.9rem">
