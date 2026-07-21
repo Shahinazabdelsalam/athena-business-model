@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Mentions légales — Athena{% endblock %}
+{% block description %}Mentions légales du service Athena Business Model, édité par EntangleEQ : éditeur, directrice de la publication et hébergeur.{% endblock %}
+{% block content %}
+<div class="container" style="padding-top:32px;padding-bottom:60px;max-width:780px">
+
+  <h1 style="margin:0 0 6px">Mentions légales</h1>
+  <p class="muted" style="margin:0 0 28px">Dernière mise à jour : {{ maj }}</p>
+
+  <h2>Éditeur du site</h2>
+  <p><b>EntangleEQ</b><br>
+    Société par actions simplifiée à associé unique (SASU) au capital de 1 000 €<br>
+    Siège social : 72 C1, 17 rue de Navarre, 77700 Serris, France<br>
+    Immatriculée au Registre du Commerce et des Sociétés de <b>Meaux</b> sous le numéro <b>105 341 374</b><br>
+    Identifiant européen (EUID) : FR7701.105341374<br>
+    N° de TVA intracommunautaire : FR 74 105 341 374
+    <span class="muted">(à retirer si vous relevez de la franchise en base de TVA)</span><br>
+    Contact : <a href="mailto:{{ admin_email }}">{{ admin_email }}</a></p>
+
+  <h2>Directrice de la publication</h2>
+  <p>Shahinaz Abd El Salam Ibrahim, Présidente d'EntangleEQ.</p>
+
+  <h2>Hébergeur</h2>
+  <p><b>Railway Corporation</b> — San Francisco, Californie, États-Unis<br>
+    <a href="https://railway.app" target="_blank" rel="noopener">railway.app</a><br>
+    <span class="muted">[À COMPLÉTER : adresse postale complète et téléphone de l'hébergeur,
+      à relever sur le site de Railway.]</span></p>
+
+  <h2>Propriété intellectuelle</h2>
+  <p>L'ensemble du site (structure, textes, interface, méthode de calcul) est la propriété
+    d'EntangleEQ et protégé par le droit d'auteur. Toute reproduction ou exploitation, totale ou
+    partielle, sans autorisation écrite préalable est interdite.</p>
+  <p><b>Vos données vous appartiennent :</b> les modèles économiques que vous créez restent votre
+    propriété exclusive. EntangleEQ ne les exploite ni ne les communique à des tiers.</p>
+
+  <h2>Responsabilité</h2>
+  <p>Athena Business Model est un <b>outil d'aide à la décision</b>. Les résultats affichés
+    (marge, seuil de rentabilité, projections, scénarios) reposent sur les hypothèses que vous
+    saisissez et ne constituent <b>ni un conseil comptable, ni juridique, ni fiscal</b>. Ils ne
+    remplacent pas l'accompagnement d'un professionnel du chiffre. EntangleEQ ne saurait être tenue
+    responsable des décisions prises sur la base de ces estimations.</p>
+
+  <h2>Données personnelles</h2>
+  <p>Le traitement de vos données est détaillé dans notre
+    <a href="/confidentialite">politique de confidentialité</a>.</p>
+
+  <h2>Médiation de la consommation</h2>
+  <p>Conformément à l'article L.612-1 du Code de la consommation, tout consommateur peut recourir
+    gratuitement à un médiateur de la consommation en vue de la résolution amiable d'un litige.<br>
+    <span class="muted">[À COMPLÉTER : nom et coordonnées du médiateur retenu — adhésion obligatoire
+      dès lors que vous vendez à des particuliers.]</span></p>
+
+  <p class="muted" style="margin-top:32px;font-size:.85rem">
+    Athena Business Model — un outil au service de l'autonomie économique des femmes. ♀
+  </p>
+</div>
+{% endblock %}
