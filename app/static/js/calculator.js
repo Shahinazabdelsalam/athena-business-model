@@ -8,6 +8,11 @@
 const FREQUENCES = ["mensuel", "trimestriel", "semestriel", "annuel", "hebdomadaire", "quotidien", "unique"];
 const NOMS_MOIS  = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
+/* Échappe le texte saisi avant de l'injecter dans du HTML (un guillemet dans
+   une description casserait l'attribut value ; on neutralise aussi < > & '). */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 const eur = (n) => (n == null || isNaN(n)) ? "—" :
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 const pct = (n) => (n == null || isNaN(n)) ? "—" : (n * 100).toFixed(1) + " %";
@@ -23,28 +28,28 @@ let timer     = null;
 /* ---------- Construction des lignes ---------- */
 function charge(d = {}) {
   return `<div class="row charges">
-    <div><div class="col-label">Description</div><input class="c-desc" type="text" value="${d.description || ""}" placeholder="Loyer"></div>
+    <div><div class="col-label">Description</div><input class="c-desc" type="text" value="${esc(d.description)}" placeholder="Loyer"></div>
     <div><div class="col-label">Fréquence</div><select class="c-freq">${FREQUENCES.map(f => `<option ${d.frequence === f ? "selected" : ""}>${f}</option>`).join("")}</select></div>
     <div><div class="col-label">Montant (HT)</div><input class="c-mont" type="number" step="10" value="${d.montant_unitaire ?? ""}"></div>
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
 function role(d = {}) {
   return `<div class="row equipe">
-    <div><div class="col-label">Rôle</div><input class="e-desc" type="text" value="${d.description || ""}" placeholder="Direction"></div>
+    <div><div class="col-label">Rôle</div><input class="e-desc" type="text" value="${esc(d.description)}" placeholder="Direction"></div>
     <div><div class="col-label">ETP <span class="tip" data-tip="Équivalent Temps Plein. 1 = plein temps, 0,5 = mi-temps. Toi à 80% = 0,8.">?</span></div><input class="e-etp" type="number" step="0.1" value="${d.etp ?? ""}"></div>
     <div><div class="col-label">Net mensuel/ETP</div><input class="e-net" type="number" step="50" value="${d.remuneration_nette_mensuelle ?? ""}"></div>
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
 function invest(d = {}) {
   return `<div class="row invest">
-    <div><div class="col-label">Description</div><input class="i-desc" type="text" value="${d.description || ""}" placeholder="Ordinateur"></div>
+    <div><div class="col-label">Description</div><input class="i-desc" type="text" value="${esc(d.description)}" placeholder="Ordinateur"></div>
     <div><div class="col-label">Durée (ans)</div><input class="i-duree" type="number" step="1" value="${d.duree_amortissement ?? ""}"></div>
     <div><div class="col-label">Montant (HT)</div><input class="i-mont" type="number" step="50" value="${d.montant_investi ?? ""}"></div>
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
 function offre(d = {}) {
   return `<div class="row offres">
-    <div><div class="col-label">Offre</div><input class="o-desc" type="text" value="${d.description || ""}" placeholder="Atelier"></div>
+    <div><div class="col-label">Offre</div><input class="o-desc" type="text" value="${esc(d.description)}" placeholder="Atelier"></div>
     <div><div class="col-label">Prix (HT)</div><input class="o-prix" type="number" step="10" value="${d.prix ?? ""}"></div>
     <div><div class="col-label">Coût var. (HT)</div><input class="o-cvar" type="number" step="10" value="${d.cout_variable ?? ""}"></div>
     <div><div class="col-label">Nb / an</div><input class="o-qte" type="number" step="1" value="${d.quantite ?? ""}"></div>

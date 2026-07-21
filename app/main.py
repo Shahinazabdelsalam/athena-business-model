@@ -9,7 +9,10 @@ marge, seuil de rentabilité, compte de résultat).
 import json
 import logging
 import os
+import re
+import time
 import urllib.parse
+from collections import defaultdict, deque
 from pathlib import Path
 
 import httpx
@@ -34,7 +37,9 @@ app = FastAPI(title="Athena Business Model")
 # --------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+# Comparé à des emails stockés en minuscules → on normalise pour éviter
+# qu'une majuscule dans la variable d'env verrouille l'accès admin.
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
 SITE_URL = os.getenv("SITE_URL", "https://athenamodel.entangleeq.com")
 
 # Stripe — abonnement Athena Pro : 30 jours gratuits puis 4,99 €/mois.
@@ -47,8 +52,28 @@ PRO_TRIAL_DAYS  = int(os.getenv("PRO_TRIAL_DAYS", "30"))
 # Comptes gratuits : nombre maximum de modèles (illimité en Pro).
 FREE_MODEL_LIMIT = 2
 
+# Garde-fous de l'API publique de calcul (/api/calculer, sans authentification).
+CALC_RATE_WINDOW = 60        # fenêtre glissante, en secondes
+CALC_RATE_MAX    = 120       # requêtes max par IP et par fenêtre
+CALC_MAX_BODY    = 256 * 1024  # taille max du corps JSON (256 Ko)
+CALC_MAX_LIGNES  = 500       # nb max de lignes par section (offres, charges…)
+
+# Validation d'email côté serveur (le formulaire n'est qu'une aide côté client).
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+    # Échoue vite (et proprement) plutôt que de figer la page ~30 s si Stripe
+    # est injoignable ou mal configuré en production.
+    stripe.max_network_retries = 1
+    try:
+        try:
+            from stripe import http_client as _stripe_http   # SDK < 15
+        except Exception:
+            from stripe import _http_client as _stripe_http   # SDK >= 15
+        stripe.default_http_client = _stripe_http.new_default_http_client(timeout=8)
+    except Exception as _exc:  # pragma: no cover — selon la version du SDK
+        logger.warning("Timeout Stripe non configuré (%s) : les appels peuvent être lents.", _exc)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -63,8 +88,83 @@ GOOGLE_USER_URL  = "https://www.googleapis.com/oauth2/v2/userinfo"
 # --------------------------------------------------------------------------
 # Startup
 # --------------------------------------------------------------------------
+# Valeurs par défaut connues (présentes dans le dépôt public) = clé NON secrète.
+# Avec l'une d'elles, n'importe qui peut forger un cookie de session et usurper
+# n'importe quel compte, y compris l'administratrice.
+_INSECURE_SECRET_KEYS = {
+    "",
+    "dev-secret-change-me-in-production",
+    "changez-moi-en-production",
+}
+
+
+def _is_production() -> bool:
+    """Heuristique : sommes-nous sur un déploiement (Railway / Postgres) et non en local ?"""
+    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_ENVIRONMENT_NAME"):
+        return True
+    if os.getenv("APP_ENV", "").lower() in ("prod", "production"):
+        return True
+    return os.getenv("DATABASE_URL", "").startswith(("postgres://", "postgresql://"))
+
+
+def _check_security_config():
+    """
+    Garde-fou de démarrage : en production, refuse de booter si les sessions
+    seraient falsifiables. En local, se contente d'un avertissement bruyant.
+    """
+    if auth.SECRET_KEY in _INSECURE_SECRET_KEYS:
+        msg = (
+            "SECRET_KEY n'est pas configurée : les cookies de session seraient "
+            "falsifiables et n'importe qui pourrait usurper un compte (y compris "
+            "l'administratrice). Générez-en une avec "
+            "`python -c \"import secrets; print(secrets.token_hex(32))\"` "
+            "puis définissez la variable d'environnement SECRET_KEY."
+        )
+        if _is_production():
+            raise RuntimeError("Démarrage refusé — " + msg)
+        logger.warning("⚠️  %s (toléré en développement local)", msg)
+
+    if _is_production() and not ADMIN_EMAIL:
+        logger.warning(
+            "⚠️  ADMIN_EMAIL n'est pas définie : la page /admin est inaccessible "
+            "à tout le monde, y compris à vous."
+        )
+
+
+def _check_stripe_config():
+    """
+    Diagnostic de paiement au démarrage : dit clairement, dans les logs, si
+    l'abonnement Pro est opérationnel — la cause n°1 du « 503 Stripe » en prod
+    est une variable d'environnement manquante.
+    """
+    missing = [name for name, val in (
+        ("STRIPE_SECRET_KEY", STRIPE_SECRET_KEY),
+        ("STRIPE_WEBHOOK_SECRET", STRIPE_WEBHOOK_SECRET),
+    ) if not val]
+
+    if not STRIPE_SECRET_KEY:
+        logger.warning(
+            "💳  Stripe non configuré (%s manquante%s) : l'abonnement Athena Pro "
+            "est DÉSACTIVÉ, le calculateur gratuit fonctionne normalement.",
+            ", ".join(missing), "s" if len(missing) > 1 else "",
+        )
+        return
+
+    mode = "LIVE 🔴" if STRIPE_SECRET_KEY.startswith("sk_live_") else \
+           "TEST 🧪" if STRIPE_SECRET_KEY.startswith("sk_test_") else "inconnu ⚠️"
+    logger.info(
+        "💳  Stripe actif — mode %s · price_id=%s · webhook=%s",
+        mode,
+        STRIPE_PRICE_ID or "(créé à la volée)",
+        "configuré" if STRIPE_WEBHOOK_SECRET else "MANQUANT (bascule Premium non automatique)",
+    )
+
+
 @app.on_event("startup")
 def _startup():
+    _check_security_config()  # peut interrompre volontairement le démarrage en production
+    _check_stripe_config()
+
     try:
         init_db()
         logger.info("Database initialized successfully.")
@@ -141,6 +241,52 @@ def require_admin(request: Request, db: Session) -> User:
     return user
 
 
+def _set_session_cookie(resp, user_id: int, request: Request) -> None:
+    """
+    Pose le cookie de session. Il est marqué `Secure` dès qu'on est en
+    production (le proxy Railway termine le TLS, donc request.url.scheme peut
+    valoir http en interne — on se fie aussi à _is_production()).
+    """
+    secure = _is_production() or request.url.scheme == "https"
+    resp.set_cookie(
+        "session",
+        auth.make_session_cookie(user_id),
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+
+
+# Limiteur de débit en mémoire (par process) pour l'API publique de calcul.
+_calc_hits: dict[str, deque] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    """IP de l'appelante — derrière le proxy Railway elle est dans X-Forwarded-For."""
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "?"
+
+
+def _calc_rate_limited(ip: str) -> bool:
+    """Fenêtre glissante : vrai si l'IP dépasse CALC_RATE_MAX sur CALC_RATE_WINDOW."""
+    now = time.monotonic()
+    hits = _calc_hits[ip]
+    while hits and hits[0] <= now - CALC_RATE_WINDOW:
+        hits.popleft()
+    if len(hits) >= CALC_RATE_MAX:
+        return True
+    hits.append(now)
+    # Borne mémoire : purge les IP inactives, et repart de zéro si ça déborde.
+    if len(_calc_hits) > 20_000:
+        for k in [k for k, v in _calc_hits.items() if not v]:
+            _calc_hits.pop(k, None)
+        if len(_calc_hits) > 20_000:
+            _calc_hits.clear()
+    return False
+
+
 # --------------------------------------------------------------------------
 # Pages publiques
 # --------------------------------------------------------------------------
@@ -158,12 +304,18 @@ def register_page(request: Request):
 @app.post("/inscription")
 def register(
     request: Request,
-    email: str = Form(...),
+    email: str = Form(""),
     nom: str = Form(""),
-    password: str = Form(...),
+    password: str = Form(""),
     db: Session = Depends(get_db),
 ):
     email = email.strip().lower()
+    if not EMAIL_RE.match(email) or len(email) > 254:
+        return templates.TemplateResponse(
+            "register.html",
+            {"request": request, "error": "Veuillez saisir une adresse email valide."},
+            status_code=400,
+        )
     if db.query(User).filter(User.email == email).first():
         return templates.TemplateResponse(
             "register.html",
@@ -186,7 +338,7 @@ def register(
     db.commit()
     db.refresh(user)
     resp = RedirectResponse(url="/tableau-de-bord", status_code=303)
-    resp.set_cookie("session", auth.make_session_cookie(user.id), httponly=True, samesite="lax")
+    _set_session_cookie(resp, user.id, request)
     return resp
 
 
@@ -224,7 +376,7 @@ def login(
             status_code=400,
         )
     resp = RedirectResponse(url="/tableau-de-bord", status_code=303)
-    resp.set_cookie("session", auth.make_session_cookie(user.id), httponly=True, samesite="lax")
+    _set_session_cookie(resp, user.id, request)
     return resp
 
 
@@ -268,25 +420,32 @@ async def google_callback(
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
     redirect_uri  = _google_redirect_uri(request)
 
-    async with httpx.AsyncClient() as client:
-        token_r = await client.post(GOOGLE_TOKEN_URL, data={
-            "client_id":     client_id,
-            "client_secret": client_secret,
-            "code":          code,
-            "redirect_uri":  redirect_uri,
-            "grant_type":    "authorization_code",
-        })
-        if token_r.status_code != 200:
-            logger.error("Google token exchange failed %s: %s | redirect_uri=%s",
-                         token_r.status_code, token_r.text, redirect_uri)
-            return RedirectResponse("/connexion?error=google_token_invalid", status_code=303)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            token_r = await client.post(GOOGLE_TOKEN_URL, data={
+                "client_id":     client_id,
+                "client_secret": client_secret,
+                "code":          code,
+                "redirect_uri":  redirect_uri,
+                "grant_type":    "authorization_code",
+            })
+            if token_r.status_code != 200:
+                logger.error("Google token exchange failed %s: %s | redirect_uri=%s",
+                             token_r.status_code, token_r.text, redirect_uri)
+                return RedirectResponse("/connexion?error=google_token_invalid", status_code=303)
 
-        access_token = token_r.json().get("access_token", "")
-        user_r = await client.get(
-            GOOGLE_USER_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        profile = user_r.json()
+            access_token = token_r.json().get("access_token", "")
+            user_r = await client.get(
+                GOOGLE_USER_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if user_r.status_code != 200:
+                logger.error("Google userinfo failed %s: %s", user_r.status_code, user_r.text)
+                return RedirectResponse("/connexion?error=google_token_invalid", status_code=303)
+            profile = user_r.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.error("Google OAuth callback error: %s", exc)
+        return RedirectResponse("/connexion?error=google_token_invalid", status_code=303)
 
     email = (profile.get("email") or "").lower().strip()
     nom   = profile.get("name", "")
@@ -302,7 +461,7 @@ async def google_callback(
         db.refresh(user)
 
     resp = RedirectResponse(url="/tableau-de-bord", status_code=303)
-    resp.set_cookie("session", auth.make_session_cookie(user.id), httponly=True, samesite="lax")
+    _set_session_cookie(resp, user.id, request)
     return resp
 
 
@@ -458,7 +617,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     if event["type"] == "checkout.session.completed":
         uid = obj.get("client_reference_id")
-        target = db.query(User).filter(User.id == int(uid)).first() if uid else None
+        try:
+            target = db.query(User).filter(User.id == int(uid)).first() if uid else None
+        except (ValueError, TypeError):
+            target = None
         if target:
             target.is_premium = True
             target.stripe_customer_id = obj.get("customer")
@@ -521,7 +683,9 @@ def admin_page(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/admin/toggle-premium/{user_id}")
 def admin_toggle_premium(user_id: int, request: Request, db: Session = Depends(get_db)):
-    require_admin(request, db)
+    admin = require_admin(request, db)
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre statut.")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404)
@@ -532,7 +696,9 @@ def admin_toggle_premium(user_id: int, request: Request, db: Session = Depends(g
 
 @app.delete("/admin/users/{user_id}")
 def admin_delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    require_admin(request, db)
+    admin = require_admin(request, db)
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte.")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404)
@@ -546,8 +712,28 @@ def admin_delete_user(user_id: int, request: Request, db: Session = Depends(get_
 # --------------------------------------------------------------------------
 @app.post("/api/calculer")
 async def api_calculer(request: Request):
-    """Calcul de viabilité — sans authentification, calcul pur."""
-    data = await request.json()
+    """Calcul de viabilité — public (sans authentification), calcul pur."""
+    if _calc_rate_limited(_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Trop de requêtes. Réessayez dans un instant.")
+
+    cl = request.headers.get("content-length", "")
+    if cl.isdigit() and int(cl) > CALC_MAX_BODY:
+        raise HTTPException(status_code=413, detail="Charge utile trop volumineuse.")
+
+    body = await request.body()
+    if len(body) > CALC_MAX_BODY:
+        raise HTTPException(status_code=413, detail="Charge utile trop volumineuse.")
+    try:
+        data = json.loads(body or b"{}")
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON invalide.")
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Format attendu : un objet JSON.")
+    for key in ("charges_externes", "equipe", "investissements", "offres"):
+        v = data.get(key)
+        if isinstance(v, list) and len(v) > CALC_MAX_LIGNES:
+            raise HTTPException(status_code=413, detail=f"Trop de lignes dans « {key} ».")
+
     try:
         return JSONResponse(calculer(data))
     except Exception as e:
