@@ -25,6 +25,21 @@
   </div>
   {% endif %}
 
+  {% if user.is_premium %}
+  <div class="card" style="margin-top:20px;padding:16px 20px;display:flex;justify-content:space-between;
+       align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <strong>⭐ Votre abonnement Athena Pro est actif</strong>
+      <p class="muted" style="margin:3px 0 0;font-size:.85rem">
+        Modifiez votre moyen de paiement, téléchargez vos factures ou résiliez à tout moment — sans engagement.
+      </p>
+    </div>
+    <form method="post" action="/stripe/portail" style="margin:0">
+      <button type="submit" class="btn ghost small">Gérer mon abonnement</button>
+    </form>
+  </div>
+  {% endif %}
+
   {% if models %}
   <div class="grid-models">
     {% for m in models %}

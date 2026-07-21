@@ -91,30 +91,34 @@
       {% if model and user and user.is_premium %}
       <div class="section">
         <h3>📅 Projection pluriannuelle</h3>
-        <p class="hint">Taux de croissance annuels appliqués pour simuler les années 2 et 3.</p>
+        <p class="hint"><b>« Et si je continue pendant 3 ans ? »</b> On applique ces deux taux chaque année
+          pour voir si ton projet s'améliore avec le temps… ou s'enlise.</p>
         <div class="params-grid">
-          <div><label>Croissance CA (%/an)</label><input type="number" id="croissance_ca" value="10" step="1" min="-50" max="200"></div>
-          <div><label>Évolution charges (%/an)</label><input type="number" id="croissance_charges" value="3" step="1" min="-50" max="100"></div>
+          <div><label>Croissance CA (%/an) <span class="tip" data-tip="De combien tu penses vendre en plus chaque année. 10 = +10 %/an : un CA de 30 000 € devient 33 000 € en an 2, puis 36 300 € en an 3. Mets 0 si tu préfères rester prudente.">?</span></label><input type="number" id="croissance_ca" value="10" step="1" min="-50" max="200"></div>
+          <div><label>Évolution charges (%/an) <span class="tip" data-tip="De combien tes coûts fixes augmentent chaque année : loyer, assurances, inflation. 3 = +3 %/an. Important : tes charges montent même si tu ne fais rien.">?</span></label><input type="number" id="croissance_charges" value="3" step="1" min="-50" max="100"></div>
         </div>
       </div>
 
       <div class="section">
         <h3>🎭 Scénarios de volume</h3>
-        <p class="hint">Multiplicateurs appliqués au volume de toutes vos offres (1 = réaliste).</p>
+        <p class="hint"><b>« Et si je vends moins — ou plus — que prévu ? »</b> On multiplie les quantités de
+          toutes tes offres pour tester ta marge dans les deux cas. 1 = ton hypothèse de départ.</p>
         <div class="params-grid">
-          <div><label>Pessimiste (×)</label><input type="number" id="sc_pessimiste" value="0.6" step="0.05" min="0.1" max="2"></div>
-          <div><label>Optimiste (×)</label><input type="number" id="sc_optimiste" value="1.5" step="0.05" min="0.5" max="5"></div>
+          <div><label>Pessimiste (×) <span class="tip" data-tip="Le cas où ça marche moins bien que prévu. 0,6 = tu ne vends que 60 % de ce que tu espères. Si tu restes viable même ici, ton projet est solide.">?</span></label><input type="number" id="sc_pessimiste" value="0.6" step="0.05" min="0.1" max="2"></div>
+          <div><label>Optimiste (×) <span class="tip" data-tip="Le cas où ça marche bien. 1,5 = tu vends 50 % de plus que prévu. Si tu n'es TOUJOURS pas viable ici, le problème ne vient pas du volume mais de tes prix ou de tes charges.">?</span></label><input type="number" id="sc_optimiste" value="1.5" step="0.05" min="0.5" max="5"></div>
         </div>
       </div>
 
       <div class="section">
-        <h3>📈 Acquisition & rétention</h3>
-        <p class="hint">Pour les offres à abonnement — modélise la valeur vie client.</p>
+        <h3>📈 Acquisition &amp; rétention</h3>
+        <p class="hint"><b>Uniquement si tu vends un abonnement</b> (adhésion, programme mensuel, box…).
+          Pour des prestations ponctuelles type atelier ou coaching à l'unité, <b>laisse vide</b> : cette
+          section ne te concerne pas.</p>
         <div class="params-grid">
-          <div><label>CAC (€/client)</label><input type="number" id="acq_cac" step="10" min="0" placeholder="ex : 120"></div>
-          <div><label>Prix mensuel moyen (€)</label><input type="number" id="acq_prix_mensuel" step="5" min="0" placeholder="ex : 50"></div>
-          <div><label>Churn mensuel (%)</label><input type="number" id="acq_churn" step="0.5" min="0" max="100" placeholder="ex : 3"></div>
-          <div><label>Budget acquisition/an (€)</label><input type="number" id="acq_budget" step="100" min="0" placeholder="ex : 5000"></div>
+          <div><label>CAC (€/client) <span class="tip" data-tip="Coût d'Acquisition Client : ce que tu dépenses en moyenne (pub, commissions, temps passé) pour décrocher UNE cliente.">?</span></label><input type="number" id="acq_cac" step="10" min="0" placeholder="ex : 120"></div>
+          <div><label>Prix mensuel moyen (€) <span class="tip" data-tip="Ce qu'une cliente abonnée te paie chaque mois.">?</span></label><input type="number" id="acq_prix_mensuel" step="5" min="0" placeholder="ex : 50"></div>
+          <div><label>Churn mensuel (%) <span class="tip" data-tip="Le pourcentage de clientes qui résilient chaque mois. 3 = 3 clientes sur 100 partent par mois, donc elles restent ~33 mois en moyenne. Plus c'est bas, mieux c'est.">?</span></label><input type="number" id="acq_churn" step="0.5" min="0" max="100" placeholder="ex : 3"></div>
+          <div><label>Budget acquisition/an (€) <span class="tip" data-tip="Ce que tu comptes dépenser par an pour recruter des clientes. Sert à estimer combien tu peux en gagner avec ce budget.">?</span></label><input type="number" id="acq_budget" step="100" min="0" placeholder="ex : 5000"></div>
         </div>
       </div>
       {% elif model %}
