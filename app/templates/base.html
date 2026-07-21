@@ -24,7 +24,8 @@
     <div class="links">
       {% if user %}
         <a href="/tableau-de-bord">Mes modèles</a>
-        {% if not user.is_premium %}<a href="/upgrade" style="color:var(--violet);font-weight:700">⭐ Pro</a>{% endif %}
+        {% if not user.is_premium %}<a href="/upgrade" style="color:var(--violet);font-weight:700">⭐ Pro</a>
+        {% else %}<a href="/upgrade" class="muted">Mon abonnement</a>{% endif %}
         {% if user.email == admin_email %}<a href="/admin" class="muted">Admin</a>{% endif %}
         <a href="/deconnexion" class="muted">Déconnexion</a>
       {% else %}
