@@ -30,6 +30,15 @@ from app.engine import calculer
 from app.models import User, BusinessModel
 
 logger = logging.getLogger("athena")
+# uvicorn ne configure pas notre logger : on lui attache un handler explicite
+# pour que les diagnostics (démarrage, Stripe, sécurité) soient visibles dans
+# les logs Railway, y compris au niveau INFO.
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(_h)
+    logger.propagate = False
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="Athena Business Model")
