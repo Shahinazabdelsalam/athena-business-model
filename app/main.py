@@ -159,12 +159,21 @@ def _check_stripe_config():
         )
         return
 
-    mode = "LIVE 🔴" if STRIPE_SECRET_KEY.startswith("sk_live_") else \
-           "TEST 🧪" if STRIPE_SECRET_KEY.startswith("sk_test_") else "inconnu ⚠️"
+    # Le mode se lit au milieu de la clé : vaut pour les clés standard (sk_…)
+    # comme pour les clés restreintes (rk_…), recommandées côté sécurité.
+    if "_live_" in STRIPE_SECRET_KEY:
+        mode = "LIVE 🔴"
+    elif "_test_" in STRIPE_SECRET_KEY:
+        mode = "TEST 🧪"
+    else:
+        mode = "inconnu ⚠️"
+    kind = "restreinte" if STRIPE_SECRET_KEY.startswith("rk_") else "standard"
+
     logger.info(
-        "💳  Stripe actif — mode %s · price_id=%s · webhook=%s",
+        "💳  Stripe actif — mode %s · clé %s · price_id=%s · webhook=%s",
         mode,
-        STRIPE_PRICE_ID or "(créé à la volée)",
+        kind,
+        STRIPE_PRICE_ID or "(créé à la volée — nécessite Prices:write sur la clé)",
         "configuré" if STRIPE_WEBHOOK_SECRET else "MANQUANT (bascule Premium non automatique)",
     )
 
