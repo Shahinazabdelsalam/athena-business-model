@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Créer son business model gratuitement — Athena, l'outil de viabilité pour femmes entrepreneuses{% endblock %}
-{% block description %}Créez votre business model en ligne gratuitement et vérifiez si votre projet d'entreprise est rentable : coûts fixes, marge, seuil de rentabilité, compte de résultat. Pensé pour les femmes entrepreneuses, sans jargon comptable.{% endblock %}
+{% block title %}Business model gratuit en ligne | Athena{% endblock %}
+{% block description %}Créez votre business model en ligne gratuitement et vérifiez si votre projet est rentable : coûts, marge, seuil de rentabilité. Sans jargon comptable.{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>Construisez un projet <span class="accent">viable</span>,<br>à vos conditions.</h1>
+  <h1>Créez un <span class="accent">business model</span> viable,<br>à vos conditions.</h1>
   <p class="lead">
     Athena aide les femmes entrepreneuses à créer leur <strong>business model</strong> et à
     vérifier, sur une année-type, que leurs revenus couvrent leurs coûts. Coûts fixes,
@@ -60,18 +60,26 @@
     </details>
   </section>
 
+  <section style="margin-bottom:60px">
+    <h2 style="text-align:center;margin-bottom:24px">Nos guides gratuits</h2>
+    <div class="grid-articles">
+      {% for article in articles %}
+        <a class="carte-article" href="/blog/{{ article.slug }}">
+          <p class="carte-meta muted">{{ article.lecture }} de lecture</p>
+          <h2>{{ article.titre }}</h2>
+          <p class="carte-resume">{{ article.resume }}</p>
+          <span class="carte-lire">Lire le guide →</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
   <div class="card center" style="margin-bottom:60px">
     <h2>Prête à chiffrer votre projet ?</h2>
     <p class="muted">Créez un compte gratuit : 2 modèles sauvegardés, illimités avec Athena Pro.</p>
     <a href="/inscription" class="btn">Je me lance</a>
   </div>
 </div>
-
-<style>
-.faq-item { border: 1px solid var(--bord); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; background: #fff; }
-.faq-item summary { font-weight: 700; cursor: pointer; font-size: .95rem; }
-.faq-item p { margin: 10px 0 4px; font-size: .9rem; color: var(--gris); line-height: 1.55; }
-</style>
 
 <script type="application/ld+json">
 {

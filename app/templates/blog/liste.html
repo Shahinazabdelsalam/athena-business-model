@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Guides business model et rentabilité | Athena{% endblock %}
+{% block description %}Nos guides gratuits pour créer son business model et piloter sa rentabilité : méthode, formules, exemples chiffrés. Sans jargon comptable.{% endblock %}
+{% block content %}
+<section class="hero" style="padding-bottom:32px">
+  <h1>Les guides <span class="accent">Athena</span></h1>
+  <p class="lead">
+    Business model, seuil de rentabilité, marge : les notions qui décident de la
+    viabilité d'un projet, expliquées simplement et illustrées par des exemples chiffrés.
+  </p>
+</section>
+
+<div class="container" style="padding-bottom:70px">
+  <div class="grid-articles">
+    {% for article in articles %}
+      <a class="carte-article" href="/blog/{{ article.slug }}">
+        <p class="carte-meta muted">{{ article.date_fr }} · {{ article.lecture }} de lecture</p>
+        <h2>{{ article.titre }}</h2>
+        <p class="carte-resume">{{ article.resume }}</p>
+        <span class="carte-lire">Lire le guide →</span>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -163,3 +163,49 @@ footer { text-align: center; padding: 30px; color: var(--gris); font-size: 0.85r
 }
 .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--vert); color: #fff; padding: 12px 22px; border-radius: 999px; box-shadow: var(--ombre); opacity: 0; transition: opacity .3s; z-index: 50; }
 .toast.show { opacity: 1; }
+
+/* ---- FAQ (accueil et articles) ---- */
+.faq-item { border: 1px solid var(--bord); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; background: #fff; }
+.faq-item summary { font-weight: 700; cursor: pointer; font-size: .95rem; }
+.faq-item p { margin: 10px 0 4px; font-size: .9rem; color: var(--gris); line-height: 1.55; }
+
+/* ---- Blog : liste des guides ---- */
+.grid-articles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.carte-article {
+  display: block; background: var(--blanc); border: 1px solid var(--bord);
+  border-radius: var(--radius); padding: 24px; color: var(--texte);
+  transition: box-shadow .2s, transform .15s, border-color .15s;
+}
+.carte-article:hover { text-decoration: none; box-shadow: var(--ombre); transform: translateY(-2px); border-color: var(--violet-clair); }
+.carte-article h2 { margin: 6px 0 10px; font-size: 1.25rem; color: var(--violet); }
+.carte-meta { margin: 0; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+.carte-resume { margin: 0 0 14px; color: var(--gris); font-size: .95rem; }
+.carte-lire { font-weight: 700; color: var(--violet); font-size: .9rem; }
+
+/* ---- Blog : article ---- */
+.article-wrap { max-width: 720px; margin: 0 auto; padding: 32px 24px 70px; }
+.article-wrap h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 10px; }
+.fil-ariane { margin: 0 0 20px; font-size: .88rem; }
+.article-meta { color: var(--gris); font-size: .85rem; margin: 0 0 32px; }
+.prose { font-size: 1.02rem; line-height: 1.7; }
+.prose h2 { font-size: 1.4rem; margin: 40px 0 12px; line-height: 1.3; }
+.prose p { margin: 0 0 16px; }
+.prose ul, .prose ol { margin: 0 0 18px; padding-left: 22px; }
+.prose li { margin-bottom: 8px; }
+.prose .chapo { font-size: 1.12rem; color: var(--gris); }
+.prose .formule {
+  margin: 0 0 18px; padding: 16px 20px; border-left: 4px solid var(--violet);
+  background: var(--violet-pale); border-radius: 0 10px 10px 0;
+}
+.prose .formule strong { color: var(--violet); }
+.article-cta { margin-top: 48px; }
+.autres-articles { margin-top: 48px; }
+.autres-articles h2 { font-size: 1.2rem; margin-bottom: 14px; }
+.autre-lien {
+  display: block; padding: 16px 18px; border: 1px solid var(--bord);
+  border-radius: 10px; background: var(--blanc); margin-bottom: 10px; color: var(--texte);
+}
+.autre-lien:hover { text-decoration: none; border-color: var(--violet-clair); }
+.autre-lien strong { display: block; color: var(--violet); margin-bottom: 4px; }
+.autre-lien span { font-size: .88rem; }
+@media (max-width: 600px) { .article-wrap h1 { font-size: 1.6rem; } }

@@ -1,0 +1,58 @@
+{# Gabarit commun des articles du blog : en-tête, SEO, CTA et JSON-LD.
+   Un article concret hérite de ce fichier et remplit le bloc `article`
+   (le corps) et, si besoin, le bloc `faq_jsonld`. #}
+{% extends "base.html" %}
+{% block title %}{{ article.meta_title }}{% endblock %}
+{% block description %}{{ article.description }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block content %}
+<div class="article-wrap">
+  <p class="fil-ariane"><a href="/blog">← Tous les guides</a></p>
+  <h1>{{ article.titre }}</h1>
+  <p class="article-meta">Publié le {{ article.date_fr }} · {{ article.lecture }} de lecture</p>
+
+  <article class="prose">
+    {% block article %}{% endblock %}
+  </article>
+
+  <div class="card center article-cta">
+    <h2>Chiffrez votre projet gratuitement</h2>
+    <p class="muted">Vos coûts, vos offres, votre seuil de rentabilité : le calcul se fait tout seul.</p>
+    <a href="/essayer" class="btn">Tester l'outil gratuitement</a>
+  </div>
+
+  {% if autres %}
+  <section class="autres-articles">
+    <h2>À lire aussi</h2>
+    {% for autre in autres %}
+      <a class="autre-lien" href="/blog/{{ autre.slug }}">
+        <strong>{{ autre.titre }}</strong>
+        <span class="muted">{{ autre.resume }}</span>
+      </a>
+    {% endfor %}
+  </section>
+  {% endif %}
+</div>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": {{ article.titre | tojson }},
+  "description": {{ article.description | tojson }},
+  "url": "{{ site_url }}/blog/{{ article.slug }}",
+  "mainEntityOfPage": {"@type": "WebPage", "@id": "{{ site_url }}/blog/{{ article.slug }}"},
+  "datePublished": "{{ article.date }}",
+  "dateModified": "{{ article.date }}",
+  "inLanguage": "fr",
+  "image": "{{ site_url }}/static/athena-og.png",
+  "author": {"@type": "Organization", "name": "Athena", "url": "{{ site_url }}"},
+  "publisher": {
+    "@type": "Organization",
+    "name": "Athena Business Model",
+    "logo": {"@type": "ImageObject", "url": "{{ site_url }}/static/athena-og.png"}
+  }
+}
+</script>
+{% block faq_jsonld %}{% endblock %}
+{% endblock %}

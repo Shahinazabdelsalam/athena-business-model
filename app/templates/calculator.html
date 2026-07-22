@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{% if model %}{{ model.nom }}{% else %}Essayer{% endif %} — Athena{% endblock %}
+{% block title %}{% if model %}{{ model.nom }} | Athena{% else %}Tester la viabilité de mon projet | Athena{% endif %}{% endblock %}
+{% block description %}Testez gratuitement si votre projet d'entreprise est rentable : coûts, offres, marge et seuil de rentabilité. Sans inscription pour commencer.{% endblock %}
+{% block robots %}{% if model %}noindex,nofollow{% else %}index,follow{% endif %}{% endblock %}
 {% block content %}
 <div class="container">
   <!-- Visible uniquement à l'impression -->
@@ -8,14 +10,14 @@
       <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6a2c91,#a06cd5);display:grid;place-items:center;color:#fff;font-size:1rem">A</div>
       <strong style="font-size:14pt;color:#6a2c91">Athena</strong>
     </div>
-    <h1 id="print-titre" style="margin:0 0 2px;font-size:20pt"></h1>
+    <div id="print-titre" style="margin:0 0 2px;font-size:20pt;font-weight:800"></div>
     <p style="margin:0;color:#666;font-size:9pt" id="print-date"></p>
     <hr style="border:none;border-top:2px solid #6a2c91;margin:8px 0 0">
   </div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:24px">
     <div>
-      <h1 id="titre-modele" style="margin:0">{% if model %}{{ model.nom }}{% else %}Mode découverte{% endif %}</h1>
+      <h1 id="titre-modele" style="margin:0">{% if model %}{{ model.nom }}{% else %}Mon business model (mode découverte){% endif %}</h1>
       <p class="muted" style="margin:4px 0 0">
         {% if model %}Vos modifications se sauvegardent sur votre compte.
         {% else %}<a href="/inscription">Créez un compte</a> pour sauvegarder ce modèle.{% endif %}

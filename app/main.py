@@ -28,6 +28,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app import auth
+from app.blog import ARTICLES, ARTICLES_PAR_SLUG
 from app.database import get_db, init_db, engine
 from app.engine import calculer
 from app.models import User, BusinessModel
@@ -358,7 +359,9 @@ def _calc_rate_limited(ip: str) -> bool:
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
-    return templates.TemplateResponse("index.html", {"request": request, "user": user})
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "user": user, "articles": ARTICLES}
+    )
 
 
 @app.get("/confidentialite", response_class=HTMLResponse)
@@ -385,6 +388,30 @@ def cgv_page(request: Request, db: Session = Depends(get_db)):
         "request": request,
         "user": get_current_user(request, db),
         "maj": "21 juillet 2026",
+    })
+
+
+@app.get("/blog", response_class=HTMLResponse)
+def blog_index(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse("blog/liste.html", {
+        "request": request,
+        "user": get_current_user(request, db),
+        "articles": ARTICLES,
+    })
+
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
+def blog_article(slug: str, request: Request, db: Session = Depends(get_db)):
+    # Le slug n'atteint le nom de gabarit qu'après validation contre le registre :
+    # une URL inventée renvoie 404 au lieu d'aller chercher un fichier arbitraire.
+    article = ARTICLES_PAR_SLUG.get(slug)
+    if article is None:
+        raise HTTPException(status_code=404, detail="Article introuvable")
+    return templates.TemplateResponse(f"blog/{slug}.html", {
+        "request": request,
+        "user": get_current_user(request, db),
+        "article": article,
+        "autres": [a for a in ARTICLES if a["slug"] != slug],
     })
 
 
@@ -1025,16 +1052,16 @@ def robots():
 
 @app.get("/sitemap.xml")
 def sitemap():
+    # Uniquement les pages indexables : /connexion et les pages légales sont
+    # en noindex, les lister ici enverrait un signal contradictoire à Google.
     pages = [
         ("/", "weekly", "1.0"),
         ("/essayer", "weekly", "0.9"),
         ("/upgrade", "monthly", "0.8"),
         ("/inscription", "monthly", "0.7"),
-        ("/connexion", "monthly", "0.3"),
-        ("/confidentialite", "yearly", "0.2"),
-        ("/mentions-legales", "yearly", "0.2"),
-        ("/cgv", "yearly", "0.2"),
+        ("/blog", "weekly", "0.6"),
     ]
+    pages += [(f"/blog/{a['slug']}", "monthly", "0.7") for a in ARTICLES]
     urls = "".join(
         f"<url><loc>{SITE_URL}{path}</loc><changefreq>{freq}</changefreq><priority>{prio}</priority></url>"
         for path, freq, prio in pages
