@@ -90,8 +90,34 @@ if STRIPE_SECRET_KEY:
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def _static_version() -> str:
+    """
+    Jeton de cache-busting pour les assets statiques (CSS/JS).
+
+    StaticFiles n'envoie pas de Cache-Control : les navigateurs mettent alors le
+    fichier en cache par heuristique et peuvent servir une version périmée après
+    un déploiement. En suffixant l'URL d'un ?v=<jeton> qui change à chaque
+    déploiement, on force le re-téléchargement. Priorité au SHA de commit fourni
+    par Railway ; à défaut, le mtime le plus récent des fichiers statiques
+    (recréé à chaque build).
+    """
+    sha = os.getenv("RAILWAY_GIT_COMMIT_SHA", "").strip()
+    if sha:
+        return sha[:8]
+    try:
+        latest = max(
+            f.stat().st_mtime for f in (BASE_DIR / "static").rglob("*") if f.is_file()
+        )
+        return str(int(latest))
+    except (ValueError, OSError):
+        return "1"
+
+
 templates.env.globals["admin_email"] = ADMIN_EMAIL
 templates.env.globals["site_url"] = SITE_URL
+templates.env.globals["static_version"] = _static_version()
 
 GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
