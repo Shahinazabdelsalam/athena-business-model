@@ -85,7 +85,13 @@
 
       <div class="section">
         <h3>💡 Offres & coûts variables</h3>
+        {% if model and user and user.is_premium %}
+        <p class="hint">Vos sources de revenus : prix, coût variable et <b>volume par année</b>.
+          Mets <b>0</b> pour une offre absente cette année-là — ex. des pilotes en An 1, tes vraies offres à partir de l'An 2.
+          Laisse une case vide pour la laisser suivre ton taux de croissance.</p>
+        {% else %}
         <p class="hint">Vos sources de revenus : prix, coût variable et volume annuel de chaque offre.</p>
+        {% endif %}
         <div id="offres"></div>
         <button class="add-line" onclick="addOffre()">+ Ajouter une offre</button>
       </div>
@@ -178,13 +184,14 @@
       {% if model and user and user.is_premium %}
       <div class="section">
         <h3>📅 Projection 3 ans</h3>
-        <p class="hint" style="margin-bottom:10px">Basée sur les taux de croissance définis dans vos paramètres.</p>
+        <p class="hint" style="margin-bottom:10px">Basée sur les volumes par année de chaque offre (ou, à défaut, sur ton taux de croissance).</p>
         <table class="pl-table" id="proj-table"></table>
+        <div id="proj-trajectoire"></div>
       </div>
 
       <div class="section">
         <h3>🎭 Comparaison scénarios</h3>
-        <p class="hint" style="margin-bottom:10px">Pessimiste, réaliste et optimiste sur le volume de ventes.</p>
+        <p class="hint" style="margin-bottom:10px">Volume ×0,6 / ×1,5 appliqué à chaque année. Verdict lu à la croisière (An 3).</p>
         <table class="pl-table" id="sc-table"></table>
       </div>
 
@@ -526,6 +533,7 @@ function wz_appliquer() {
 
 <script>
   window.MODEL_ID = {% if model %}{{ model.id }}{% else %}null{% endif %};
+  window.IS_PREMIUM = {% if user and user.is_premium %}true{% else %}false{% endif %};
   window.MODEL_DATA = {{ model_data | tojson | safe if model_data else "{}" }};
 </script>
 <script>

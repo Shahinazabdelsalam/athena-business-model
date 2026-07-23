@@ -24,6 +24,9 @@ FREQUENCES: Dict[str, float] = {
     "unique": 1,
 }
 
+# Horizon de la projection pluriannuelle (An 1 → An 3).
+ANNEES_PROJECTION = 3
+
 
 def annualiser(montant: float, frequence: str) -> float:
     """Ramène un montant à son coût annuel selon sa fréquence."""
@@ -81,24 +84,191 @@ def cout_employeur(net_mensuel: float, etp: float, p: Parametres) -> float:
     return cout
 
 
+def _params_projection(data: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Extrait les taux de la projection (bloc `pro`) en fractions.
+
+    Défauts alignés sur le frontend : +10 %/an de CA, +3 %/an de charges,
+    scénarios ×0,6 (pessimiste) et ×1,5 (optimiste). Ces taux ne servent qu'à
+    la projection ; ils n'influencent pas l'analyse de l'An 1.
+    """
+    pro = data.get("pro") or {}
+
+    def num(key: str, default: float) -> float:
+        v = pro.get(key)
+        if v is None:
+            return float(default)
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return float(default)
+
+    return {
+        "croissance_ca": num("croissance_ca", 10.0) / 100.0,
+        "croissance_charges": num("croissance_charges", 3.0) / 100.0,
+        "sc_pessimiste": num("sc_pessimiste", 0.6),
+        "sc_optimiste": num("sc_optimiste", 1.5),
+    }
+
+
+def normaliser_volumes(offre: Dict[str, Any], annees: int, croissance_ca: float) -> list:
+    """
+    Volume (nb vendu/an) d'une offre pour chacune des `annees` de projection.
+
+    Priorité au champ `volumes` (une valeur par année : ex. pilotes [3, 0, 0],
+    licences [0, 10, 11]). Rétro-compatibilité : un ancien modèle ne portant
+    qu'un `quantite`/`nbParAn` unique le traite comme le volume de l'An 1.
+
+    Les années non renseignées (None, absente ou vide) sont auto-remplies à
+    partir de l'année précédente et du taux de croissance du CA — ce qui
+    reproduit exactement l'ancienne projection uniforme. L'auto-remplissage
+    n'arrondit pas, pour garantir la non-régression des modèles existants
+    (l'arrondi entier suggéré à la saisie est une aide d'affichage, côté
+    frontend, pas une valeur imposée). Un 0 explicite reste un 0 : c'est ainsi
+    qu'on modélise une offre qui n'existe pas (encore ou plus) une année donnée.
+    """
+    raw = offre.get("volumes")
+    if not isinstance(raw, list):
+        q = offre.get("quantite")
+        if q is None:
+            q = offre.get("nbParAn", offre.get("nb_par_an", 0))
+        raw = [q]
+
+    vols = []
+    for n in range(annees):
+        v = raw[n] if n < len(raw) else None
+        if isinstance(v, (int, float)) or (isinstance(v, str) and v.strip() != ""):
+            vols.append(float(v))          # valeur explicite (0 compris)
+        else:
+            prev = vols[n - 1] if n > 0 else 0.0
+            vols.append(prev * (1 + croissance_ca))   # auto-remplissage
+    return vols
+
+
+def _verdict_trajectoire(annees: list) -> Dict[str, Any]:
+    """
+    Lit la trajectoire de viabilité au-delà du seul verdict de l'An 1.
+
+    - `viable`     : rentable dès l'An 1.
+    - `amorcage`   : An 1 déficitaire mais viable à partir d'une année suivante
+                     (profil normal de démarrage) — on expose l'année de bascule
+                     et le besoin de trésorerie à financer d'ici là.
+    - `non_viable` : jamais viable sur l'horizon.
+
+    Le besoin de trésorerie = cumul des marges nettes négatives avant la
+    première année viable (ce qu'il faut couvrir pour tenir : apport, ARE/ARCE,
+    prêt d'honneur…).
+    """
+    viables = [a["viable"] for a in annees]
+    if not viables:
+        etat, premier_viable = "indetermine", None
+    elif viables[0]:
+        etat, premier_viable = "viable", 1
+    elif any(viables):
+        etat = "amorcage"
+        premier_viable = next(i + 1 for i, v in enumerate(viables) if v)
+    else:
+        etat, premier_viable = "non_viable", None
+
+    if premier_viable:
+        besoin = -sum(min(0.0, a["marge_nette"]) for a in annees[: premier_viable - 1])
+    else:
+        besoin = 0.0
+
+    return {
+        "etat": etat,
+        "premiere_annee_viable": premier_viable,
+        "besoin_tresorerie": besoin,
+    }
+
+
+def _projeter(
+    offres_norm: list,
+    cotisation_ca_pct: float,
+    couts_fixes_recurrents_0: float,
+    couts_fixes_uniques_0: float,
+    dividendes_cibles: float,
+    params_proj: Dict[str, float],
+    annees: int = ANNEES_PROJECTION,
+) -> Dict[str, Any]:
+    """
+    Projection pluriannuelle fondée sur les volumes par année de chaque offre.
+
+    Le CA et les coûts variables suivent les volumes propres à chaque année (et
+    non un taux global) : c'est ce qui permet de représenter une montée en
+    charge (An 1 = pilotes d'amorçage, An 2+ = offres de croisière). Les charges
+    récurrentes croissent au taux d'évolution des charges ; les charges à
+    fréquence `unique` (frais de création, adhésion…) ne pèsent que sur l'An 1.
+    """
+    g_ch = params_proj["croissance_charges"]
+
+    def annee(n: int, volume_mult: float = 1.0) -> Dict[str, Any]:
+        ca = sum(o["prix"] * o["volumes"][n] * volume_mult for o in offres_norm)
+        cvar = sum(o["cout_variable"] * o["volumes"][n] * volume_mult for o in offres_norm)
+        cotisation = ca * cotisation_ca_pct
+        marge_brute = (ca - cvar) - cotisation
+        charges = couts_fixes_recurrents_0 * ((1 + g_ch) ** n)
+        if n == 0:
+            charges += couts_fixes_uniques_0     # charges uniques : An 1 seulement
+        marge_nette = marge_brute - charges
+        return {
+            "annee": n + 1,
+            "ca": ca,
+            "couts_variables": cvar,
+            "cotisation_ca": cotisation,
+            "marge_brute": marge_brute,
+            "charges": charges,
+            "marge_nette": marge_nette,
+            "viable": marge_nette >= dividendes_cibles,
+        }
+
+    def serie(volume_mult: float = 1.0) -> list:
+        return [annee(n, volume_mult) for n in range(annees)]
+
+    base = serie(1.0)
+    return {
+        "annees": base,
+        "trajectoire": _verdict_trajectoire(base),
+        "scenarios": {
+            "pessimiste": {"mult": params_proj["sc_pessimiste"],
+                           "annees": serie(params_proj["sc_pessimiste"])},
+            "realiste":   {"mult": 1.0, "annees": base},
+            "optimiste":  {"mult": params_proj["sc_optimiste"],
+                           "annees": serie(params_proj["sc_optimiste"])},
+        },
+    }
+
+
 def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Calcule l'analyse de viabilité complète d'un scénario.
 
     `data` attend les clés : parametres, charges_externes, equipe,
-    investissements, offres. Renvoie un dictionnaire de résultats détaillés.
+    investissements, offres. Renvoie un dictionnaire de résultats détaillés,
+    dont une `projection` pluriannuelle (volumes par année, verdict de
+    trajectoire, scénarios de volume).
     """
     p = Parametres.from_dict(data.get("parametres", {}))
 
     # ---- COÛTS FIXES (feuille FIXE) -------------------------------------
     lignes_charges = []
     total_charges_externes = 0.0
+    # Pour la projection : on distingue le récurrent (qui court chaque année) des
+    # charges à fréquence `unique` (frais de création, adhésion…), qui ne pèsent
+    # que sur l'An 1 et ne doivent donc pas être reconduites/augmentées ensuite.
+    charges_externes_recurrentes = 0.0
+    charges_externes_uniques = 0.0
     for c in (data.get("charges_externes") or []):
-        annuel = annualiser(c.get("montant_unitaire", 0) or 0, c.get("frequence", "annuel"))
+        freq = c.get("frequence", "annuel")
+        annuel = annualiser(c.get("montant_unitaire", 0) or 0, freq)
         total_charges_externes += annuel
+        if freq == "unique":
+            charges_externes_uniques += annuel
+        else:
+            charges_externes_recurrentes += annuel
         lignes_charges.append({
             "description": c.get("description", ""),
-            "frequence": c.get("frequence", "annuel"),
+            "frequence": freq,
             "montant_unitaire": float(c.get("montant_unitaire", 0) or 0),
             "cout_annuel": annuel,
         })
@@ -134,25 +304,39 @@ def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
         })
 
     couts_fixes = total_charges_externes + total_remunerations + total_amortissements
+    # Base récurrente de la projection : rémunérations et amortissements courent
+    # chaque année (comme le récurrent externe) et croissent au taux d'évolution
+    # des charges. Seul le récurrent grossit ; les charges uniques restent An 1.
+    couts_fixes_recurrents = (
+        charges_externes_recurrentes + total_remunerations + total_amortissements
+    )
+    couts_fixes_uniques = charges_externes_uniques
 
     # ---- OFFRES & COÛTS VARIABLES (feuille VARIABLE) --------------------
+    params_proj = _params_projection(data)
     lignes_offres = []
+    offres_norm = []          # {prix, cout_variable, volumes[par année]} pour la projection
     ca_total = 0.0
     couts_variables_total = 0.0
     for o in (data.get("offres") or []):
         prix = float(o.get("prix", 0) or 0)
         cvar = float(o.get("cout_variable", 0) or 0)
-        qte = float(o.get("quantite", 0) or 0)
+        # Volume par année (rétro-compatible avec l'ancien `quantite` unique).
+        # L'analyse An 1 s'appuie sur le volume de la 1re année (amorçage).
+        volumes = normaliser_volumes(o, ANNEES_PROJECTION, params_proj["croissance_ca"])
+        qte = volumes[0]
         marge_unit = prix - cvar
         ca = prix * qte
         cv = cvar * qte
         ca_total += ca
         couts_variables_total += cv
+        offres_norm.append({"prix": prix, "cout_variable": cvar, "volumes": volumes})
         lignes_offres.append({
             "description": o.get("description", ""),
             "prix": prix,
             "cout_variable": cvar,
             "quantite": qte,
+            "volumes": volumes,
             "marge_brute_unitaire": marge_unit,
             "ca": ca,
             "couts_variables": cv,
@@ -191,6 +375,18 @@ def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
 
     taux_couverture = (marge_brute_total / couts_fixes) if couts_fixes > 0 else None
 
+    # ---- PROJECTION PLURIANNUELLE (montée en charge) -------------------
+    # Volumes par année → CA/marges par année ; charges récurrentes indexées,
+    # charges uniques cantonnées à l'An 1 ; verdict de trajectoire + scénarios.
+    projection = _projeter(
+        offres_norm=offres_norm,
+        cotisation_ca_pct=p.cotisation_ca_pct,
+        couts_fixes_recurrents_0=couts_fixes_recurrents,
+        couts_fixes_uniques_0=couts_fixes_uniques,
+        dividendes_cibles=p.dividendes_cibles,
+        params_proj=params_proj,
+    )
+
     return {
         "parametres": p.__dict__,
         "charges_externes": lignes_charges,
@@ -225,4 +421,5 @@ def calculer(data: Dict[str, Any]) -> Dict[str, Any]:
             "remunerations": total_remunerations,
             "marge_nette": marge_nette,
         },
+        "projection": projection,
     }

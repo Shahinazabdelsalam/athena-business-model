@@ -117,5 +117,141 @@ class TestScenarioComplet(unittest.TestCase):
         self.assertIsNone(r["totaux"]["seuil_ca"])
 
 
+class TestProjectionMonteeEnCharge(unittest.TestCase):
+    """
+    Projection pluriannuelle avec volumes par année (montée en charge :
+    An 1 = pilotes d'amorçage, An 2+ = offres de croisière). Les chiffres du
+    cas réel viennent du brief « Montée en charge » (modèle EntangleEQ).
+    """
+
+    def _cas_reel(self):
+        return {
+            "parametres": {
+                "cotisations_patronales": False,
+                "taux_taxe_salaires": 0.0,
+                "cotisation_ca_pct": 0.0,
+            },
+            "charges_externes": [
+                {"description": "Récurrent", "frequence": "annuel", "montant_unitaire": 5795},
+                {"description": "Frais de création", "frequence": "unique", "montant_unitaire": 450},
+                {"description": "Adhésion Willa", "frequence": "unique", "montant_unitaire": 1450},
+            ],
+            "offres": [
+                {"description": "Pilote payant", "prix": 1000, "cout_variable": 0, "volumes": [3, 0, 0]},
+                {"description": "Licence Essentiel", "prix": 2499, "cout_variable": 0, "volumes": [0, 10, 11]},
+                {"description": "Licence Performance", "prix": 6000, "cout_variable": 0, "volumes": [0, 5, 6]},
+            ],
+            "pro": {"croissance_ca": 10, "croissance_charges": 3,
+                    "sc_pessimiste": 0.6, "sc_optimiste": 1.5},
+        }
+
+    def test_cas_reel_ca_par_annee(self):
+        annees = calculer(self._cas_reel())["projection"]["annees"]
+        self.assertAlmostEqual(annees[0]["ca"], 3000)
+        self.assertAlmostEqual(annees[1]["ca"], 54990)   # 10×2499 + 5×6000
+        self.assertAlmostEqual(annees[2]["ca"], 63489)   # 11×2499 + 6×6000
+
+    def test_cas_reel_charges_par_annee(self):
+        annees = calculer(self._cas_reel())["projection"]["annees"]
+        # An 1 = récurrent 5795 + uniques (450 + 1450) = 7695
+        self.assertAlmostEqual(annees[0]["charges"], 7695)
+        # An 2/3 : seul le récurrent croît de 3 %/an ; les uniques ont disparu
+        self.assertAlmostEqual(annees[1]["charges"], 5795 * 1.03)
+        self.assertAlmostEqual(annees[2]["charges"], 5795 * 1.03 ** 2)
+
+    def test_cas_reel_marge_nette_et_verdicts(self):
+        annees = calculer(self._cas_reel())["projection"]["annees"]
+        self.assertAlmostEqual(annees[0]["marge_nette"], -4695)
+        self.assertAlmostEqual(annees[1]["marge_nette"], 49021.15, places=2)
+        self.assertAlmostEqual(annees[2]["marge_nette"], 57341.08, places=2)
+        self.assertEqual([a["viable"] for a in annees], [False, True, True])
+
+    def test_cas_reel_trajectoire_amorcage(self):
+        traj = calculer(self._cas_reel())["projection"]["trajectoire"]
+        self.assertEqual(traj["etat"], "amorcage")
+        self.assertEqual(traj["premiere_annee_viable"], 2)
+        # Besoin de trésorerie An 1 = |marge nette An 1|
+        self.assertAlmostEqual(traj["besoin_tresorerie"], 4695)
+
+    def test_an1_amorcage_ne_gonfle_pas_le_ca(self):
+        # L'analyse An 1 (KPIs, verdict gratuit) doit refléter l'amorçage,
+        # pas les licences de croisière : CA An 1 = 3 pilotes × 1000.
+        t = calculer(self._cas_reel())["totaux"]
+        self.assertAlmostEqual(t["ca_total"], 3000)
+        self.assertFalse(t["viable"])
+
+    def test_charge_unique_non_reconduite(self):
+        data = {
+            "charges_externes": [
+                {"description": "Frais de création", "frequence": "unique", "montant_unitaire": 2000},
+            ],
+            "offres": [{"description": "Presta", "prix": 500, "cout_variable": 0, "volumes": [10, 10, 10]}],
+            "pro": {"croissance_charges": 3},
+        }
+        annees = calculer(data)["projection"]["annees"]
+        self.assertAlmostEqual(annees[0]["charges"], 2000)   # payée une fois
+        self.assertAlmostEqual(annees[1]["charges"], 0)      # jamais reconduite
+        self.assertAlmostEqual(annees[2]["charges"], 0)
+
+    def test_scenario_pessimiste_par_volumes(self):
+        # ×0,6 s'applique aux volumes de chaque année : An 2 = 54990 × 0,6.
+        scen = calculer(self._cas_reel())["projection"]["scenarios"]
+        self.assertAlmostEqual(scen["pessimiste"]["annees"][1]["ca"], 32994)
+        self.assertAlmostEqual(scen["optimiste"]["annees"][1]["ca"], 54990 * 1.5)
+
+    def test_offre_lancement_an3(self):
+        # Une offre [0, 0, X] ne produit du CA qu'à partir de l'An 3.
+        data = {
+            "offres": [{"description": "Nouvelle offre", "prix": 800, "cout_variable": 0, "volumes": [0, 0, 25]}],
+        }
+        annees = calculer(data)["projection"]["annees"]
+        self.assertAlmostEqual(annees[0]["ca"], 0)
+        self.assertAlmostEqual(annees[1]["ca"], 0)
+        self.assertAlmostEqual(annees[2]["ca"], 800 * 25)
+
+    def test_non_regression_modele_legacy(self):
+        # Ancien modèle : offre avec `quantite` unique, aucune charge unique.
+        # La projection doit reproduire EXACTEMENT l'ancienne extrapolation
+        # uniforme : CA[N] = CA0×(1+g)^N, charges[N] = CF0×(1+gCh)^N.
+        data = {
+            "parametres": {"cotisations_patronales": False, "taux_taxe_salaires": 0.0},
+            "charges_externes": [{"description": "Loyer", "frequence": "mensuel", "montant_unitaire": 500}],
+            "equipe": [{"description": "Fondatrice", "etp": 1, "remuneration_nette_mensuelle": 2000}],
+            "investissements": [{"description": "Matériel", "duree_amortissement": 5, "montant_investi": 5000}],
+            "offres": [{"description": "Atelier", "prix": 100, "cout_variable": 20, "quantite": 500}],
+            "pro": {"croissance_ca": 10, "croissance_charges": 3},
+        }
+        r = calculer(data)
+        t, annees = r["totaux"], r["projection"]["annees"]
+        ca0, mb0, cf0 = t["ca_total"], t["marge_brute_total"], t["couts_fixes"]
+        for n, a in enumerate(annees):
+            self.assertAlmostEqual(a["ca"], ca0 * 1.10 ** n)
+            self.assertAlmostEqual(a["marge_brute"], mb0 * 1.10 ** n)
+            self.assertAlmostEqual(a["charges"], cf0 * 1.03 ** n)
+            self.assertAlmostEqual(a["marge_nette"], mb0 * 1.10 ** n - cf0 * 1.03 ** n)
+        # An 1 de la projection == analyse mono-année d'aujourd'hui.
+        self.assertAlmostEqual(annees[0]["marge_nette"], t["marge_nette"])
+
+    def test_verdict_trajectoire_viable_des_an1(self):
+        data = {
+            "offres": [{"description": "Presta", "prix": 1000, "cout_variable": 0, "volumes": [50, 55, 60]}],
+            "charges_externes": [{"description": "Loyer", "frequence": "mensuel", "montant_unitaire": 500}],
+        }
+        traj = calculer(data)["projection"]["trajectoire"]
+        self.assertEqual(traj["etat"], "viable")
+        self.assertEqual(traj["premiere_annee_viable"], 1)
+        self.assertAlmostEqual(traj["besoin_tresorerie"], 0)
+
+    def test_verdict_trajectoire_non_viable(self):
+        data = {
+            "offres": [{"description": "Presta", "prix": 30, "cout_variable": 20, "volumes": [10, 11, 12]}],
+            "charges_externes": [{"description": "Loyer", "frequence": "mensuel", "montant_unitaire": 500}],
+            "pro": {"croissance_ca": 10, "croissance_charges": 3},
+        }
+        traj = calculer(data)["projection"]["trajectoire"]
+        self.assertEqual(traj["etat"], "non_viable")
+        self.assertIsNone(traj["premiere_annee_viable"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -48,11 +48,38 @@ function invest(d = {}) {
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
 function offre(d = {}) {
+  /* Volume(s) : nouveau champ `volumes` par année, avec repli sur l'ancien
+     `quantite` unique (rétro-compatibilité des modèles sauvegardés). */
+  const vols = Array.isArray(d.volumes) ? d.volumes
+             : (d.quantite != null ? [d.quantite] : []);
+
+  if (window.IS_PREMIUM) {
+    /* Une case vide = « suit la croissance » (auto-remplie côté serveur) ;
+       un 0 explicite = offre absente cette année-là. */
+    const v = (i) => (vols[i] != null && vols[i] !== "" ? vols[i] : "");
+    return `<div class="row offres pro">
+      <div><div class="col-label">Offre</div><input class="o-desc" type="text" value="${esc(d.description)}" placeholder="Atelier"></div>
+      <div><div class="col-label">Prix (HT)</div><input class="o-prix" type="number" step="10" value="${d.prix ?? ""}"></div>
+      <div><div class="col-label">Coût var.</div><input class="o-cvar" type="number" step="10" value="${d.cout_variable ?? ""}"></div>
+      <div>
+        <div class="col-label">Volumes / an <span class="tip" data-tip="Ton volume prévu chaque année. Mets 0 pour une offre qui n'existe pas encore (ou plus) cette année-là — ex. des pilotes en An 1, tes licences à partir de l'An 2. Laisse vide pour suivre automatiquement ton taux de croissance.">?</span></div>
+        <div class="vol-group">
+          <input class="o-vol" data-an="0" type="number" step="1" min="0" value="${v(0)}" aria-label="Volume An 1">
+          <input class="o-vol" data-an="1" type="number" step="1" min="0" value="${v(1)}" aria-label="Volume An 2">
+          <input class="o-vol" data-an="2" type="number" step="1" min="0" value="${v(2)}" aria-label="Volume An 3">
+        </div>
+        <div class="vol-sub"><span>An 1</span><span>An 2</span><span>An 3</span></div>
+      </div>
+      <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
+  }
+
+  /* Gratuit — une seule colonne « Nb / an » (comportement inchangé). */
+  const q = vols.length ? vols[0] : (d.quantite ?? "");
   return `<div class="row offres">
     <div><div class="col-label">Offre</div><input class="o-desc" type="text" value="${esc(d.description)}" placeholder="Atelier"></div>
     <div><div class="col-label">Prix (HT)</div><input class="o-prix" type="number" step="10" value="${d.prix ?? ""}"></div>
     <div><div class="col-label">Coût var. (HT)</div><input class="o-cvar" type="number" step="10" value="${d.cout_variable ?? ""}"></div>
-    <div><div class="col-label">Nb / an</div><input class="o-qte" type="number" step="1" value="${d.quantite ?? ""}"></div>
+    <div><div class="col-label">Nb / an</div><input class="o-qte" type="number" step="1" value="${q ?? ""}"></div>
     <button class="mini-btn" onclick="this.parentElement.remove();schedule()">✕</button></div>`;
 }
 
@@ -85,9 +112,25 @@ function collect() {
     investissements: [...document.querySelectorAll("#invest .row")].map(el => ({
       description: val(el, ".i-desc"), duree_amortissement: num(el, ".i-duree"), montant_investi: num(el, ".i-mont"),
     })),
-    offres: [...document.querySelectorAll("#offres .row")].map(el => ({
-      description: val(el, ".o-desc"), prix: num(el, ".o-prix"), cout_variable: num(el, ".o-cvar"), quantite: num(el, ".o-qte"),
-    })),
+    offres: [...document.querySelectorAll("#offres .row")].map(el => {
+      const o = { description: val(el, ".o-desc"), prix: num(el, ".o-prix"), cout_variable: num(el, ".o-cvar") };
+      const volEls = el.querySelectorAll(".o-vol");
+      if (volEls.length) {
+        /* Pro : un volume par année. Case vide → null (le serveur auto-remplit
+           depuis la croissance) ; un 0 explicite reste 0. */
+        const volumes = [...volEls].map(i => {
+          const t = i.value.trim();
+          return t === "" ? null : (parseFloat(t) || 0);
+        });
+        o.volumes = volumes;
+        o.quantite = volumes[0] ?? 0;   // rétro-compat : lecture mono-année
+      } else {
+        const q = num(el, ".o-qte");
+        o.quantite = q;
+        o.volumes = [q];
+      }
+      return o;
+    }),
   };
 
   /* Champs Pro — uniquement pour les comptes connectés */
@@ -136,14 +179,33 @@ async function recalc() {
   } catch (e) { return; }
   const t = r.totaux, cr = r.compte_resultat;
 
-  /* Verdict */
+  /* Verdict — en Pro, on lit la TRAJECTOIRE (un projet peut être déficitaire
+     en An 1 d'amorçage et viable dès l'An 2). En gratuit, verdict de l'An 1. */
   const verdict = document.getElementById("verdict");
-  verdict.className = "verdict " + (t.viable ? "ok" : "ko");
-  document.getElementById("verdict-txt").textContent = t.viable ? "Viable ✓" : "Non viable ✕";
+  const verdictTxt = document.getElementById("verdict-txt");
+  const traj = (window.IS_PREMIUM && r.projection) ? r.projection.trajectoire : null;
+  let positif;
+  if (traj && traj.etat === "amorcage") {
+    verdict.className = "verdict amorcage";
+    verdictTxt.textContent = "🌱 En amorçage — viable dès l'An " + traj.premiere_annee_viable;
+    positif = true;
+  } else if (traj && traj.etat === "non_viable") {
+    verdict.className = "verdict ko";
+    verdictTxt.textContent = "Non viable ✕";
+    positif = false;
+  } else if (traj && traj.etat === "viable") {
+    verdict.className = "verdict ok";
+    verdictTxt.textContent = "Viable ✓";
+    positif = true;
+  } else {
+    verdict.className = "verdict " + (t.viable ? "ok" : "ko");
+    verdictTxt.textContent = t.viable ? "Viable ✓" : "Non viable ✕";
+    positif = t.viable;
+  }
 
-  /* Bloc partage — visible uniquement quand le modèle est viable */
+  /* Bloc partage — visible dès que la trajectoire est positive */
   const partage = document.getElementById("partage");
-  if (partage) partage.style.display = t.viable ? "" : "none";
+  if (partage) partage.style.display = positif ? "" : "none";
 
   /* KPIs */
   document.getElementById("k-ca").textContent  = eur(t.ca_total);
@@ -168,14 +230,39 @@ async function recalc() {
   /* Graphique revenus vs coûts */
   drawChart(t);
 
-  /* Fonctions Pro */
+  /* Fonctions Pro — la projection et les scénarios sont désormais calculés
+     côté serveur (source de vérité) à partir des volumes par année. */
   if (window.MODEL_ID && data.pro) {
     const p = data.pro;
-    renderProjection(t, (p.croissance_ca || 0) / 100, (p.croissance_charges || 0) / 100);
-    renderScenarios(t, p.sc_pessimiste || 0.6, p.sc_optimiste || 1.5);
+    renderProjection(r.projection);
+    renderScenarios(r.projection ? r.projection.scenarios : null);
     renderTresorerie(data, t);
     renderAcquisition(p.acq_cac, p.acq_prix_mensuel, p.acq_churn, p.acq_budget);
+    syncVolumePlaceholders(p.croissance_ca);
   }
+}
+
+/* Suggestions grisées (placeholder) pour les volumes An 2 / An 3 laissés vides :
+   ce que donnerait l'auto-remplissage au taux de croissance. Purement visuel —
+   ces valeurs ne sont pas envoyées tant que l'utilisatrice ne les saisit pas. */
+function syncVolumePlaceholders(croissanceCaPct) {
+  const g = 1 + ((parseFloat(croissanceCaPct) || 0) / 100);
+  document.querySelectorAll("#offres .row.offres.pro").forEach(row => {
+    const inputs = row.querySelectorAll(".o-vol");
+    if (inputs.length < 3) return;
+    const valAt = (i) => { const t = inputs[i].value.trim(); return t === "" ? null : (parseFloat(t) || 0); };
+    let prev = valAt(0) ?? 0;
+    for (let i = 1; i < 3; i++) {
+      const suggestion = Math.round(prev * g);
+      if (valAt(i) === null) {
+        inputs[i].placeholder = String(suggestion);
+        prev = suggestion;                 // l'An 3 s'appuie sur l'An 2 suggéré
+      } else {
+        inputs[i].placeholder = "";
+        prev = valAt(i);
+      }
+    }
+  });
 }
 
 /* ---------- Graphique revenus vs coûts ---------- */
@@ -229,81 +316,84 @@ function renderPL(cr, pro) {
       </tr>` : ""}`;
 }
 
-/* ---------- Projection 3 ans ---------- */
-function renderProjection(t, gCA, gCh) {
-  const el = document.getElementById("proj-table");
-  if (!el) return;
+/* ---------- Projection 3 ans (données serveur) ---------- */
+const _thL = `text-align:left;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)`;
+const _thR = `text-align:right;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)`;
+const _tdR = (v, colored) => {
+  const style = colored
+    ? `text-align:right;padding:6px 4px;color:${v >= 0 ? "var(--vert)" : "var(--rouge)"}`
+    : "text-align:right;padding:6px 4px";
+  return `<td style="${style}">${eur(v)}</td>`;
+};
 
-  let ca = t.ca_total, mb = t.marge_brute_total, cf = t.couts_fixes;
-  const years = [];
-  for (let y = 0; y < 3; y++) {
-    const mn = mb - cf;
-    years.push({ ca, mb, cf, mn, viable: mn >= t.dividendes_cibles });
-    ca *= (1 + gCA);
-    mb *= (1 + gCA);  /* marge brute scale avec le CA (même taux de marge) */
-    cf *= (1 + gCh);
-  }
+function renderProjection(projection) {
+  const el = document.getElementById("proj-table");
+  if (!el || !projection) return;
+  const years = projection.annees || [];
 
   const badge = (v) => v
-    ? `<span style="color:var(--vert);font-weight:700">✓ Viable</span>`
-    : `<span style="color:var(--rouge);font-weight:700">✕ Non viable</span>`;
-  const tdR = (v, colored) => {
-    const style = colored !== undefined
-      ? `text-align:right;padding:6px 4px;color:${v >= 0 ? "var(--vert)" : "var(--rouge)"}`
-      : "text-align:right;padding:6px 4px";
-    return `<td style="${style}">${eur(v)}</td>`;
-  };
+    ? `<span style="color:var(--vert);font-weight:700">✓</span>`
+    : `<span style="color:var(--rouge);font-weight:700">✕</span>`;
 
   el.innerHTML = `
     <tr>
-      <th style="text-align:left;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">Indicateur</th>
-      ${["An 1","An 2","An 3"].map(a =>
-        `<th style="text-align:right;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">${a}</th>`
-      ).join("")}
+      <th style="${_thL}">Indicateur</th>
+      ${years.map(y => `<th style="${_thR}">An ${y.annee}</th>`).join("")}
     </tr>
-    <tr><td style="padding:6px 4px">CA annuel</td>${years.map(y => tdR(y.ca)).join("")}</tr>
-    <tr><td style="padding:6px 4px">Marge brute</td>${years.map(y => tdR(y.mb)).join("")}</tr>
-    <tr><td style="padding:6px 4px">Coûts fixes</td>${years.map(y => tdR(y.cf)).join("")}</tr>
-    <tr class="total"><td style="padding:6px 4px">Marge nette</td>${years.map(y => tdR(y.mn, true)).join("")}</tr>
+    <tr><td style="padding:6px 4px">CA annuel</td>${years.map(y => _tdR(y.ca)).join("")}</tr>
+    <tr><td style="padding:6px 4px">Marge brute</td>${years.map(y => _tdR(y.marge_brute)).join("")}</tr>
+    <tr><td style="padding:6px 4px">Charges</td>${years.map(y => _tdR(y.charges)).join("")}</tr>
+    <tr class="total"><td style="padding:6px 4px">Marge nette</td>${years.map(y => _tdR(y.marge_nette, true)).join("")}</tr>
     <tr><td style="padding:6px 4px">Viable ?</td>${years.map(y =>
       `<td style="text-align:right;padding:6px 4px">${badge(y.viable)}</td>`
     ).join("")}</tr>`;
+
+  const trEl = document.getElementById("proj-trajectoire");
+  if (trEl) trEl.innerHTML = trajectoireHTML(projection.trajectoire);
 }
 
-/* ---------- Comparaison scénarios ---------- */
-function renderScenarios(t, scPess, scOpt) {
-  const el = document.getElementById("sc-table");
-  if (!el) return;
+/* Bandeau de verdict de trajectoire sous la projection */
+function trajectoireHTML(tr) {
+  if (!tr) return "";
+  if (tr.etat === "viable")
+    return `<div class="proj-traj ok">✓ <b>Viable dès l'An 1.</b></div>`;
+  if (tr.etat === "amorcage")
+    return `<div class="proj-traj amorcage">🌱 <b>En amorçage</b> — viable à partir de l'An ${tr.premiere_annee_viable}.
+      Prévois <b>~${eur(tr.besoin_tresorerie)}</b> pour tenir le démarrage (apport, ARE/ARCE, prêt d'honneur…).
+      C'est un profil de départ normal, pas un échec.</div>`;
+  return `<div class="proj-traj ko">✕ <b>Non viable sur les 3 ans</b> — revois tes prix, tes volumes ou tes charges.</div>`;
+}
 
-  const scenarios = [
-    { label: "Pessimiste", mult: scPess, icon: "📉" },
-    { label: "Réaliste",   mult: 1.0,    icon: "⚖️" },
-    { label: "Optimiste",  mult: scOpt,  icon: "📈" },
+/* ---------- Comparaison scénarios (données serveur) ---------- */
+function renderScenarios(scenarios) {
+  const el = document.getElementById("sc-table");
+  if (!el || !scenarios) return;
+
+  const order = [
+    { key: "pessimiste", label: "Pessimiste", icon: "📉" },
+    { key: "realiste",   label: "Réaliste",   icon: "⚖️" },
+    { key: "optimiste",  label: "Optimiste",  icon: "📈" },
   ];
-  /* La marge brute scale linéairement avec le volume ; les coûts fixes restent constants. */
-  const compute = (mult) => {
-    const mb = t.marge_brute_total * mult;
-    const mn = mb - t.couts_fixes;
-    return { ca: t.ca_total * mult, mb, mn, viable: mn >= t.dividendes_cibles };
-  };
   const badge = (v) => v
     ? `<span style="color:var(--vert);font-weight:700">Viable ✓</span>`
     : `<span style="color:var(--rouge);font-weight:700">Non viable ✕</span>`;
 
   el.innerHTML = `
     <tr>
-      <th style="text-align:left;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">Scénario</th>
-      <th style="text-align:right;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">CA</th>
-      <th style="text-align:right;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">Marge nette</th>
-      <th style="text-align:right;padding:5px 4px;border-bottom:2px solid var(--bord);font-size:.8rem;color:var(--gris)">Verdict</th>
+      <th style="${_thL}">Scénario</th>
+      <th style="${_thR}">CA An 3</th>
+      <th style="${_thR}">Marge nette An 3</th>
+      <th style="${_thR}">An 3</th>
     </tr>
-    ${scenarios.map(s => {
-      const r = compute(s.mult);
+    ${order.map(s => {
+      const sc = scenarios[s.key];
+      if (!sc || !sc.annees || !sc.annees.length) return "";
+      const c = sc.annees[sc.annees.length - 1];   // année de croisière (An 3)
       return `<tr>
-        <td style="padding:6px 4px">${s.icon} ${s.label} <span style="color:var(--gris);font-size:.8rem">(×${s.mult})</span></td>
-        <td style="text-align:right;padding:6px 4px">${eur(r.ca)}</td>
-        <td style="text-align:right;padding:6px 4px;font-weight:600;color:${r.mn >= 0 ? "var(--vert)" : "var(--rouge)"}">${eur(r.mn)}</td>
-        <td style="text-align:right;padding:6px 4px">${badge(r.viable)}</td>
+        <td style="padding:6px 4px">${s.icon} ${s.label} <span style="color:var(--gris);font-size:.8rem">(×${sc.mult})</span></td>
+        <td style="text-align:right;padding:6px 4px">${eur(c.ca)}</td>
+        <td style="text-align:right;padding:6px 4px;font-weight:600;color:${c.marge_nette >= 0 ? "var(--vert)" : "var(--rouge)"}">${eur(c.marge_nette)}</td>
+        <td style="text-align:right;padding:6px 4px">${badge(c.viable)}</td>
       </tr>`;
     }).join("")}`;
 }
