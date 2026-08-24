@@ -105,12 +105,26 @@ input:focus, select:focus { outline: none; border-color: var(--violet-clair); }
 .row.equipe  { grid-template-columns: 2fr 1fr 1.2fr auto; }
 .row.invest  { grid-template-columns: 2fr 1fr 1.2fr auto; }
 .row.offres  { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
-/* Pro : volumes par année (montée en charge) — 3 mini-colonnes groupées. */
-.row.offres.pro { grid-template-columns: 1.7fr 0.9fr 0.9fr 1.7fr auto; }
+/* Pro : volumes par année (montée en charge) — le bloc des 3 mini-colonnes a
+   besoin de plus de place que le reste de la ligne, donc on passe en flexbox
+   et on le laisse retomber sur sa propre ligne (min 220px) plutôt que de
+   l'écraser dans une fraction de grille fixe, trop étroite sur petit écran. */
+.row.offres.pro { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.row.offres.pro > div:nth-of-type(1) { flex: 2 1 160px; }
+.row.offres.pro > div:nth-of-type(2),
+.row.offres.pro > div:nth-of-type(3) { flex: 1 1 90px; }
+.row.offres.pro > div:nth-of-type(4) { flex: 1 1 220px; }
+.row.offres.pro > .mini-btn { flex: 0 0 auto; }
 .vol-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
-.vol-group input { padding: 8px 4px; text-align: center; }
+.vol-group input { padding: 8px 4px; text-align: center; min-width: 0; }
 .vol-sub { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 2px; }
 .vol-sub span { text-align: center; font-size: 0.62rem; color: var(--gris); font-weight: 600; letter-spacing: .02em; }
+@media (max-width: 480px) {
+  .row.offres.pro > div:nth-of-type(1),
+  .row.offres.pro > div:nth-of-type(2),
+  .row.offres.pro > div:nth-of-type(3),
+  .row.offres.pro > div:nth-of-type(4) { flex-basis: 100%; }
+}
 .row .col-label { font-size: 0.72rem; color: var(--gris); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
 .row input { padding: 8px 9px; font-size: 0.88rem; }
 .row input::placeholder { color: var(--violet-clair); opacity: .6; }
