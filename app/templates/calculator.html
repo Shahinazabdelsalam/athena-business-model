@@ -654,15 +654,26 @@ function copierLien() {
     min-height: 1.3em;
   }
 
-  /* Lignes de saisie : une info par ligne, pleine largeur — plus aéré et
-     plus facile à lire qu'un tableau serré sur plusieurs colonnes. */
+  /* Lignes de saisie : 2 colonnes plutôt qu'un champ par ligne — avec une
+     liste de plusieurs charges/rôles/offres, empiler chaque champ prenait
+     trop de hauteur. La description (texte, potentiellement longue) reste
+     en pleine largeur ; les champs numériques se regroupent par deux. */
   .row.charges, .row.equipe, .row.invest, .row.offres,
   .row.offres.pro, .params-grid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 2px;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px 16px;
   }
-  .row { gap: 2px; align-items: start; margin-bottom: 12px; }
+  .row.charges > div:first-child,
+  .row.equipe > div:first-child,
+  .row.invest > div:first-child,
+  .row.offres > div:first-child,
+  .row.offres.pro > div:first-child {
+    grid-column: 1 / -1;
+  }
+  /* Le bloc Volumes/an (3 mini-champs An 1/2/3) a besoin de toute la largeur. */
+  .row.offres.pro > div:nth-of-type(4) { grid-column: 1 / -1; }
+  .row { gap: 4px; align-items: start; margin-bottom: 12px; }
   .row .col-label { font-size: 8.5pt; letter-spacing: 0; }
   .params-grid { gap: 10px; margin-bottom: 4px; }
   .params-grid label { font-size: 9pt; margin: 8px 0 3px; }
