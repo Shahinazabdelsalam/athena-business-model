@@ -605,36 +605,38 @@ function copierLien() {
   }
 
   /* ---- Mise en page print ---- */
-  body { background: #fff; color: #000; font-size: 11pt; }
+  body { background: #fff; color: #000; font-size: 11.5pt; }
   .container { max-width: 100%; padding: 0 12mm; }
 
   /* En-tête du modèle */
   #titre-modele { font-size: 18pt; margin-bottom: 2mm; }
 
-  /* Afficher en deux colonnes côte à côte */
+  /* Une seule colonne, dans l'ordre de lecture : saisie puis résultats.
+     Le côte-à-côte à deux colonnes forçait chaque champ dans une largeur
+     trop étroite pour rester lisible — on préfère un déroulé plus long
+     mais où rien n'est écrasé. */
   .calc {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 10mm;
+    display: block;
     padding: 0;
   }
+  .inputs { margin-bottom: 8mm; }
 
   /* Sections */
   .section {
     border: 1px solid #ccc;
     border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  .section > h3 { font-size: 11pt; margin: 0 0 6px; }
+  .section > h3 { font-size: 13pt; margin: 0 0 10px; }
 
   /* Résultats — plus sticky */
   .results { position: static; }
 
   /* Verdict */
-  .verdict { border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .verdict { border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }
   .verdict.ok { background: #e6f6ef; color: #1f9e78; border: 1.5px solid #1f9e78; }
   .verdict.ko { background: #fbe9ea; color: #d64550; border: 1.5px solid #d64550; }
 
@@ -644,31 +646,41 @@ function copierLien() {
   .inputs select { display: none !important; }
   .print-value {
     display: block;
-    font-size: 8.5pt;
-    padding: 1px 0 2px;
+    font-size: 10.5pt;
+    font-weight: 600;
+    padding: 3px 0 5px;
     border-bottom: 1px solid #ddd;
     word-break: break-word;
-    min-height: 1.2em;
+    min-height: 1.3em;
   }
 
-  /* Lignes de saisie compactes */
-  .row { gap: 4px; align-items: start; }
-  .row .col-label { font-size: 6.5pt; letter-spacing: 0; }
-  .params-grid { gap: 4px; }
-  .params-grid label { font-size: 7pt; }
+  /* Lignes de saisie : une info par ligne, pleine largeur — plus aéré et
+     plus facile à lire qu'un tableau serré sur plusieurs colonnes. */
+  .row.charges, .row.equipe, .row.invest, .row.offres,
+  .row.offres.pro, .params-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 2px;
+  }
+  .row { gap: 2px; align-items: start; margin-bottom: 12px; }
+  .row .col-label { font-size: 8.5pt; letter-spacing: 0; }
+  .params-grid { gap: 10px; margin-bottom: 4px; }
+  .params-grid label { font-size: 9pt; margin: 8px 0 3px; }
+  .vol-group, .vol-sub { grid-template-columns: 1fr 1fr 1fr !important; }
+  .vol-sub span { font-size: 8pt; }
 
   /* KPI rows */
-  .kpi { font-size: 10pt; padding: 5px 0; }
+  .kpi { font-size: 11pt; padding: 7px 0; }
 
   /* P&L table */
-  .pl-table { font-size: 10pt; }
+  .pl-table { font-size: 10.5pt; }
 
   /* Chart — forcer une hauteur fixe pour l'impression */
-  canvas { max-height: 160px !important; }
+  canvas { max-height: 180px !important; }
 
-  /* Sauts de page */
-  .inputs  { page-break-after: avoid; }
-  .results { page-break-before: avoid; }
+  /* Sauts de page : on démarre les résultats sur une page fraîche pour ne
+     pas les couper juste après le dernier champ de saisie. */
+  .results { page-break-before: always; break-before: page; }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
